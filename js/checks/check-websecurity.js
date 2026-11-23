@@ -112,13 +112,12 @@ function checkWebSecurity(config, _tlsProfile) {
     // ── Session IP binding ────────────────────────────────────────────────────
     // skip_ip_checking = true means DSM no longer verifies that requests in a
     // session come from the same IP as the login → session hijacking is easier.
-    if (dsmSecurity === null) {
+    const skipIp = dsmSecurity?.skip_ip_checking;
+    if (typeof skipIp !== 'boolean') {
         findings.push(unknownFinding('syn-ip-check-unknown', t('checkNameIPCheck'), t('catAuth'),
             [fwRef('NIST', 'AC-17'), fwRef('ISO', 'A.8.5')]));
     } else {
-        const ipCheckingSkipped = dsmSecurity.skip_ip_checking === true;
-
-        if (!ipCheckingSkipped) {
+        if (!skipIp) {
             findings.push({
                 id:          'syn-ip-check-on',
                 title:       t('checkIPCheckPassTitle'),

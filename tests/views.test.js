@@ -88,3 +88,42 @@ test('expanded best practice card points aria-controls at the rendered body', ()
     assert.match(card, /aria-controls="bpbody-bp-x"/);
     assert.match(card, /<div class="finding-body" id="bpbody-bp-x">/);
 });
+
+test('a framework with unevaluated checks is not shown as clean', () => {
+    const { app } = setup();
+    const nis2 = [{ code: 'NIS2', label: 'NIS2 Art.21(b)' }];
+    const findings = [
+        { id: 'a', status: 'pass',    severity: 'info', frameworks: nis2 },
+        { id: 'b', status: 'unknown', severity: 'info', frameworks: nis2 },
+    ];
+    const header = app.renderScoreHeader(findings, [], 100);
+    const chip = header.match(/<button[^>]*data-focus-key="fw-NIS2"[\s\S]*?<\/button>/)[0];
+    assert.doesNotMatch(chip, /fw-chip--clean/);
+    assert.doesNotMatch(chip, /no issues/);
+});
+
+test('QuickConnect findings cite the same frameworks in every state', () => {
+    const { app } = setup();
+    const codes = cfg => {
+        const f = runChecks(app, cfg).find(x => x.id.startsWith('syn-qc-'));
+        return f.frameworks.map(fw => fw.label).join('|');
+    };
+    const on  = codes({ QUICKCONNECT_config: '{"quickconnect":{"enabled":true}}' });
+    assert.equal(codes({ QUICKCONNECT_config: '{"quickconnect":{"enabled":false}}' }), on);
+    assert.equal(codes({}), on);
+});
+
+test('status bar names the severity filter with its translated label', () => {
+    const { app, smb1 } = setup();
+    vm.runInContext("complianceState.severityFilter = 'critical'", app);
+    const bar = app.renderStatusBar([smb1], [smb1]);
+    assert.match(bar, /filtered by Critical/);
+});
+
+test('an empty filter result does not claim that all checks passed', () => {
+    const { app } = setup();
+    vm.runInContext("complianceState.severityFilter = 'low'", app);
+    const html = app.renderFindingsByCategory([], 0);
+    assert.doesNotMatch(html, /No Issues Found|All security checks passed/);
+    assert.match(html, /No findings match the filter/);
+});

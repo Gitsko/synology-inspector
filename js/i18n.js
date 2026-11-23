@@ -287,6 +287,8 @@
             ofTotal:                 'of',
             noFindingsTitle:         'No Issues Found',
             noFindingsSub:           'All security checks passed.',
+            noFilterMatchTitle:      'No findings match the filter',
+            noFilterMatchSub:        'Clear the filters to see all failed checks.',
             noFindingsSubUnknown:    'No failed checks, but {0} could not be evaluated (see below).',
             issueCount:              '1 issue',
             issuesCount:             '{0} issues',
@@ -323,6 +325,7 @@
             checkNameCSRF:           'CSRF protection',
             checkNameIFrame:         'iFrame embedding',
             checkNameIPCheck:        'Session IP binding',
+            checkNamePwdLength:      'Minimum password length',
             checkNameSMBMinProto:    'SMB minimum protocol',
             checkNameAdmin:          'Default admin account',
             checkNameGuest:          'Guest account',
@@ -383,6 +386,8 @@
             ofTotal:                 'von',
             noFindingsTitle:         'Keine Befunde',
             noFindingsSub:           'Alle Sicherheitsprüfungen bestanden.',
+            noFilterMatchTitle:      'Keine Befunde für diesen Filter',
+            noFilterMatchSub:        'Filter zurücksetzen, um alle fehlgeschlagenen Prüfungen zu sehen.',
             noFindingsSubUnknown:    'Keine fehlgeschlagenen Prüfungen, aber {0} nicht auswertbar (siehe unten).',
             issueCount:              '1 Befund',
             issuesCount:             '{0} Befunde',
@@ -419,6 +424,7 @@
             checkNameCSRF:           'CSRF-Schutz',
             checkNameIFrame:         'iFrame-Einbettung',
             checkNameIPCheck:        'IP-Bindung der Sitzung',
+            checkNamePwdLength:      'Mindestlänge für Passwörter',
             checkNameSMBMinProto:    'SMB-Mindestprotokoll',
             checkNameAdmin:          'Standard-Admin-Konto',
             checkNameGuest:          'Gastkonto',
@@ -736,7 +742,11 @@
 
     // ── Runtime ────────────────────────────────────────────────────────────────
 
-    let _lang = localStorage.getItem('syno-inspector-lang') || 'en';
+    // Storage access throws when the browser blocks site data (e.g. file:// in
+    // some privacy modes); the app must still work without a stored language.
+    let _lang = 'en';
+    try { _lang = localStorage.getItem('syno-inspector-lang') || 'en'; } catch (_) {}
+    if (!STRINGS[_lang]) _lang = 'en';
     document.documentElement.lang = _lang;
 
     window.t = function (key, ...args) {
@@ -750,7 +760,7 @@
     window.setLanguage = function (lang) {
         if (!STRINGS[lang]) return;
         _lang = lang;
-        localStorage.setItem('syno-inspector-lang', lang);
+        try { localStorage.setItem('syno-inspector-lang', lang); } catch (_) {}
         document.documentElement.lang = lang;
         // Update active button state
         document.querySelectorAll('.lang-btn').forEach(btn => {

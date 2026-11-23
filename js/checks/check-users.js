@@ -66,9 +66,13 @@ function checkUsers(config, _tlsProfile, parseResult) {
     } else {
         // Min length
         const minLengthEnabled = config.get('Passwdstrength_isEnableMinLength') === '1';
-        const minLength        = minLengthEnabled ? parseInt(config.get('Passwdstrength_minLength') || '0', 10) : 0;
+        const minLengthRaw     = config.get('Passwdstrength_minLength') || '0';
+        const minLength        = minLengthEnabled ? parseInt(minLengthRaw, 10) : 0;
 
-        if (!minLengthEnabled || minLength < 12) {
+        if (minLengthEnabled && !/^\d+$/.test(minLengthRaw)) {
+            findings.push(unknownFinding('syn-pwd-length-unknown', t('checkNamePwdLength'), t('catUsers'),
+                [fwRef('CIS', '5.2'), fwRef('ISO', 'A.5.17'), fwRef('PCI', 'Req.8.3.6')]));
+        } else if (!minLengthEnabled || minLength < 12) {
             findings.push({
                 id:          'syn-pwd-length-weak',
                 title:       t('checkPwdLengthFailTitle'),

@@ -259,6 +259,68 @@ test('advisory check: vulnerable build fails, own build with pending update is u
     assert.ok(ids(run(90100)).includes('syn-advisories-ok'));
 });
 
+test('advisory check keeps unverifiable advisories next to vulnerable ones', () => {
+    const app = loadApp();
+    const findings = runChecks(app, {}, { info: { dsm_buildnumber: '69057' } });
+    const vuln = byId(findings, 'syn-advisories-vulnerable');
+    const unk  = byId(findings, 'syn-advisories-unknown');
+    assert.deepEqual([...vuln.affectedItems].map(i => i.split(' ')[0]), ['SA-26:21', 'SA-26:20']);
+    assert.ok(unk, 'unknown advisories must not be dropped');
+    assert.deepEqual([...unk.affectedItems].map(i => i.split(' ')[0]), ['SA-26:19', 'SA-26:13']);
+});
+
+test('advisory check rejects build numbers with trailing garbage', () => {
+    const app = loadApp();
+    const f = byId(runChecks(app, {}, { info: { dsm_buildnumber: '90100-invalid' } }), 'syn-advisories-unknown');
+    assert.ok(f);
+    assert.equal(f.affectedItems.length, 0);
+});
+
+test('session IP binding needs an explicit boolean', () => {
+    const app = loadApp();
+    const sec = data => ({ SECURITY_: JSON.stringify([{ api: 'SYNO.Core.Security.DSM', result: { data } }]) });
+    assert.ok(ids(runChecks(app, sec({ skip_ip_checking: false }))).includes('syn-ip-check-on'));
+    assert.ok(ids(runChecks(app, sec({ skip_ip_checking: true }))).includes('syn-ip-check-off'));
+    assert.ok(ids(runChecks(app, sec({}))).includes('syn-ip-check-unknown'));
+    assert.ok(ids(runChecks(app, sec({ skip_ip_checking: 'false' }))).includes('syn-ip-check-unknown'));
+});
+
+test('a non-numeric minimum password length is unknown, not a pass', () => {
+    const app = loadApp();
+    const cfg = len => ({ Passwdstrength_isApplyPasswdRule: '1', Passwdstrength_isEnableMinLength: '1', Passwdstrength_minLength: len });
+    assert.ok(ids(runChecks(app, cfg('abc'))).includes('syn-pwd-length-unknown'));
+    assert.ok(ids(runChecks(app, cfg('12'))).includes('syn-pwd-length-ok'));
+    assert.ok(ids(runChecks(app, cfg('8'))).includes('syn-pwd-length-weak'));
+});
+
+test('DoS protection reads only an active directive per interface', () => {
+    const app = loadApp();
+    const dos = ini => ({ DOS_config: JSON.stringify({ '/etc/fw_security/eth0.conf': ini }) });
+    assert.ok(ids(runChecks(app, dos('\n[SETTINGS]\ndos_protect_enable=yes\n'))).includes('syn-dos-protected'));
+    assert.ok(ids(runChecks(app, dos('[SETTINGS]\n#dos_protect_enable=yes\ndos_protect_enable=no\n'))).includes('syn-dos-incomplete'));
+    assert.ok(ids(runChecks(app, dos('[SETTINGS]\n# dos_protect_enable=yes\n'))).includes('syn-dos-incomplete'));
+    assert.ok(ids(runChecks(app, dos('[SETTINGS]\ndos_protect_enable=yesterday\n'))).includes('syn-dos-incomplete'));
+});
+
+test('TLS snippets with unrecognized protocol names are not a pass', () => {
+    const app = loadApp();
+    const conf = protocols => `ssl_protocols ${protocols};\n`;
+    const run = text => runChecks(app, {}, { tlsConfigs: [
+        { name: 'ConfigBkp/tls_profile/config/dsm.conf', text: conf('TLSv1.2 TLSv1.3') },
+        { name: 'ConfigBkp/tls_profile/config/webdav.conf', text },
+    ] });
+    assert.ok(ids(run(conf('UNKNOWN'))).includes('syn-tls-unknown'));
+    assert.ok(ids(run(conf('UNKNOWN TLSv1'))).includes('syn-tls-weak'));
+    assert.ok(ids(run(conf('TLSv1.2'))).includes('syn-tls-ok'));
+});
+
+test('SMB minimum protocol accepts only real SMB2/SMB3 dialect names', () => {
+    const app = loadApp();
+    assert.ok(ids(runChecks(app, { CIFS_Min_Protocol: 'SMB2_10' })).includes('syn-smb1-disabled'));
+    assert.ok(ids(runChecks(app, { CIFS_Min_Protocol: 'SMB3_11' })).includes('syn-smb1-disabled'));
+    assert.ok(ids(runChecks(app, { CIFS_Min_Protocol: 'SMB2-invalid' })).includes('syn-smb1-unknown'));
+});
+
 test('optional services: enabled ones fail, all explicitly off passes', () => {
     const app = loadApp();
     const on = byId(runChecks(app, { NetBKP_isEnableNetBkp: '1', NFS_isEnableNFS: '1', SNMP_isEnableSNMP: '0' }), 'syn-services-enabled');

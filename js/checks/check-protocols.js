@@ -10,17 +10,20 @@
  *   6. Optional services rsync, NFS, SNMP enabled (low)
  */
 
-const WEAK_TLS_PROTOCOLS = ['SSLv2', 'SSLv3', 'TLSv1', 'TLSv1.1'];
+const WEAK_TLS_PROTOCOLS  = ['SSLv2', 'SSLv3', 'TLSv1', 'TLSv1.1'];
+const KNOWN_TLS_PROTOCOLS = [...WEAK_TLS_PROTOCOLS, 'TLSv1.2', 'TLSv1.3'];
 
 /**
  * Find services whose nginx TLS snippet still allows outdated protocols.
  * Only files named <service>.conf are evaluated; DSM leaves temp-* copies behind.
+ * A file listing protocol names the check does not know is counted as unclear.
  *
  * @param {Array<{name: string, text: string}>} tlsConfigs
- * @returns {{ evaluated: number, weak: string[] }}
+ * @returns {{ evaluated: number, weak: string[], unclear: number }}
  */
 function findWeakTlsServices(tlsConfigs) {
     let evaluated = 0;
+    let unclear = 0;
     const weak = [];
     for (const { name, text } of tlsConfigs || []) {
         const base = name.split('/').pop();
@@ -31,8 +34,9 @@ function findWeakTlsServices(tlsConfigs) {
         const protocols = directives.flatMap(m => m[1].trim().split(/\s+/));
         const bad = [...new Set(protocols.filter(p => WEAK_TLS_PROTOCOLS.includes(p)))];
         if (bad.length) weak.push(`${base.slice(0, -5)} (${bad.join(', ')})`);
+        else if (protocols.some(p => !KNOWN_TLS_PROTOCOLS.includes(p))) unclear++;
     }
-    return { evaluated, weak };
+    return { evaluated, weak, unclear };
 }
 
 function checkProtocols(config, _tlsProfile, parseResult) {
@@ -42,7 +46,7 @@ function checkProtocols(config, _tlsProfile, parseResult) {
     // CIFS_Min_Protocol: 'SMB1' / 'NT1' = SMBv1 allowed; 'SMB2' / 'SMB3' = secure
     const minProto  = (config.get('CIFS_Min_Protocol') || '').toUpperCase();
     const smb1On    = (minProto === 'SMB1' || minProto === 'NT1');
-    const smb2Plus  = /^SMB[23]/.test(minProto);
+    const smb2Plus  = /^SMB[23](_\d+)?$/.test(minProto);
 
     if (!smb1On && !smb2Plus) {
         findings.push(unknownFinding('syn-smb1-unknown', t('checkNameSMBMinProto'), t('catProtocols'),
@@ -196,7 +200,7 @@ function checkProtocols(config, _tlsProfile, parseResult) {
     // ── Outdated TLS versions ─────────────────────────────────────────────────
     const tlsFw = [fwRef('CIS', '3.10'), fwRef('NIST', 'SC-8'), fwRef('ISO', 'A.8.24'), fwRef('PCI', 'Req.4.2.1')];
     const tls   = findWeakTlsServices(parseResult?.tlsConfigs);
-    if (tls.evaluated === 0) {
+    if (tls.weak.length === 0 && (tls.evaluated === 0 || tls.unclear > 0)) {
         findings.push(unknownFinding('syn-tls-unknown', t('checkNameTLS'), t('catProtocols'), tlsFw));
     } else if (tls.weak.length) {
         findings.push({

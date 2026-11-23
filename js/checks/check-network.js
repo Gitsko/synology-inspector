@@ -25,7 +25,10 @@ function checkNetwork(config, _tlsProfile) {
                 const interfaceName = confFilePath
                     .replace('/etc/fw_security/', '')
                     .replace('.conf', '');
-                if (!/dos_protect_enable\s*=\s*yes/i.test(iniContent)) {
+                // Last active (uncommented) directive wins, as in the INI parser
+                const values = [...String(iniContent).matchAll(
+                    /^[ \t]*dos_protect_enable[ \t]*=[ \t]*"?([^"\s]*)"?[ \t]*$/gim)];
+                if (values.at(-1)?.[1].toLowerCase() !== 'yes') {
                     unprotectedInterfaces.push(interfaceName);
                 }
             }

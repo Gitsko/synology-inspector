@@ -136,3 +136,53 @@ test('a cell with an impossible payload length is skipped, not fatal', () => {
     assert.doesNotThrow(() => { map = app.buildSynoConfigMap(bytes); });
     assert.ok(map.size <= 2);
 });
+
+test('a record header size beyond the payload is rejected without reading past it', () => {
+    const app = loadApp();
+    // header size varint 0x0fffffff, followed by a few bytes only
+    const payload = new Uint8Array([0xff, 0xff, 0xff, 0x7f, 1, 1, 1, 1, 1, 1]);
+    assert.throws(() => app.sqliteDecodeRecord(payload), /header/i);
+});
+
+function tableBytes(rows) {
+    return buildDb(db => {
+        db.exec('CREATE TABLE confbkp_config_tb (config_key TEXT, config_value TEXT)');
+        const ins = db.prepare('INSERT INTO confbkp_config_tb VALUES (?, ?)');
+        for (let i = 0; i < rows; i++) ins.run(`KEY_${i}`, `value-${i}`);
+    });
+}
+
+test('an interior page that points at itself does not recurse forever', () => {
+    const app = loadApp();
+    const bytes = tableBytes(2);
+    const pageSize = (bytes[16] << 8) | bytes[17];
+    const root = pageSize;                                   // page 2, a leaf
+    bytes[root] = 0x05;                                      // turn it into an interior page
+    bytes[root + 3] = 0; bytes[root + 4] = 0;                // no cells
+    bytes.set([0, 0, 0, 2], root + 8);                       // rightmost child = itself
+    let rows;
+    assert.doesNotThrow(() => { rows = app.readSQLiteTable(bytes, 'confbkp_config_tb'); });
+    assert.equal(rows.length, 0);
+});
+
+test('a child page referenced twice is read once', () => {
+    const app = loadApp();
+    const bytes = tableBytes(400);
+    const expected = app.readSQLiteTable(bytes, 'confbkp_config_tb').length;
+    const pageSize = (bytes[16] << 8) | bytes[17];
+    const root = pageSize;
+    assert.equal(bytes[root], 0x05, 'fixture must have an interior root page');
+    const cellPtr = (bytes[root + 12] << 8) | bytes[root + 13];
+    bytes.copyWithin(root + 8, root + cellPtr, root + cellPtr + 4);   // rightmost child = first child
+    const rows = app.readSQLiteTable(bytes, 'confbkp_config_tb');
+    assert.ok(rows.length < expected);
+    assert.equal(new Set(rows.map(r => r[0])).size, rows.length, 'no duplicate rows');
+});
+
+test('child page numbers outside the file are ignored', () => {
+    const app = loadApp();
+    const bytes = tableBytes(400);
+    const root = (bytes[16] << 8) | bytes[17];
+    bytes.set([0x7f, 0xff, 0xff, 0xff], root + 8);
+    assert.doesNotThrow(() => app.readSQLiteTable(bytes, 'confbkp_config_tb'));
+});

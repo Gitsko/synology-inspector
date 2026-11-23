@@ -115,6 +115,9 @@ function sqliteDecodeRecord(payload) {
     const hdrSizeV = sqliteReadVarint(payload, pos);
     const headerSize = hdrSizeV.value;
     pos += hdrSizeV.length;
+    if (headerSize < pos || headerSize > payload.length) {
+        throw new Error('Malformed record header');
+    }
 
     const serialTypes = [];
     while (pos < headerSize) {
@@ -163,6 +166,9 @@ function sqliteDecodeRecord(payload) {
 
 // ── B-tree traversal ──────────────────────────────────────────────────────────
 
+// SQLite itself refuses trees deeper than 20 levels (BTCURSOR_MAX_DEPTH)
+const SQLITE_MAX_TREE_DEPTH = 20;
+
 /**
  * Recursively scan all leaf pages of a table B-tree.
  * Returns an array of decoded rows (each row is an array of column values).
@@ -171,10 +177,17 @@ function sqliteDecodeRecord(payload) {
  * @param {number}     pageNum    1-based page number to scan
  * @param {number}     pageSize   Database page size in bytes
  * @param {number}     usableSize Page size minus reserved bytes per page
+ * @param {Set<number>} [visited] Pages already scanned; a corrupt file may link
+ *                                a page more than once or into a cycle
+ * @param {number}     [depth]    Current tree depth
  * @returns {Array[]}
  */
-function sqliteScanBTree(bytes, pageNum, pageSize, usableSize) {
+function sqliteScanBTree(bytes, pageNum, pageSize, usableSize, visited = new Set(), depth = 0) {
     const results = [];
+    const pageCount = Math.floor(bytes.length / pageSize);
+    if (!Number.isInteger(pageNum) || pageNum < 1 || pageNum > pageCount) return results;
+    if (visited.has(pageNum) || depth > SQLITE_MAX_TREE_DEPTH) return results;
+    visited.add(pageNum);
     const pageOffset = (pageNum - 1) * pageSize;
     const isPage1   = (pageNum === 1);
     const hdrOffset = isPage1 ? pageOffset + 100 : pageOffset; // page 1 has 100-byte DB header
@@ -218,12 +231,12 @@ function sqliteScanBTree(bytes, pageNum, pageSize, usableSize) {
             const cellOffset = pageOffset + cellPtr;
             // Cell: 4-byte left child page number + varint key (key not needed)
             const childPage = sqliteReadU32(bytes, cellOffset);
-            for (const row of sqliteScanBTree(bytes, childPage, pageSize, usableSize)) results.push(row);
+            for (const row of sqliteScanBTree(bytes, childPage, pageSize, usableSize, visited, depth + 1)) results.push(row);
         }
 
         // Process the rightmost child (loop instead of spread: large subtrees
         // would exceed the engine's argument limit)
-        for (const row of sqliteScanBTree(bytes, rightChildPage, pageSize, usableSize)) results.push(row);
+        for (const row of sqliteScanBTree(bytes, rightChildPage, pageSize, usableSize, visited, depth + 1)) results.push(row);
     }
 
     return results;

@@ -261,18 +261,19 @@ function renderScoreHeader(allFindings, failFindings, score) {
     const frameworkStats = {};
     for (const f of allFindings) {
         for (const fw of f.frameworks) {
-            if (!frameworkStats[fw.code]) frameworkStats[fw.code] = { fail: 0, pass: 0 };
-            if (f.status === 'fail')      frameworkStats[fw.code].fail++;
-            else if (f.status === 'pass') frameworkStats[fw.code].pass++;
+            if (!frameworkStats[fw.code]) frameworkStats[fw.code] = { fail: 0, pass: 0, unknown: 0 };
+            if (f.status === 'fail')         frameworkStats[fw.code].fail++;
+            else if (f.status === 'pass')    frameworkStats[fw.code].pass++;
+            else if (f.status === 'unknown') frameworkStats[fw.code].unknown++;
         }
     }
 
     const fwChips = Object.entries(FRAMEWORK_META).map(([code, meta]) => {
-        const stats    = frameworkStats[code] || { fail: 0, pass: 0 };
+        const stats    = frameworkStats[code] || { fail: 0, pass: 0, unknown: 0 };
         const isActive = complianceState.frameworkFilter === code;
         const hasIssues = stats.fail > 0;
-        // A framework whose checks could all not be evaluated is not "clean"
-        const evaluated = stats.fail + stats.pass > 0;
+        // A framework is only "clean" when every one of its checks was evaluated
+        const evaluated = stats.pass > 0 && stats.unknown === 0;
         return `
             <button type="button" class="fw-chip ${isActive ? 'fw-chip--active' : ''} ${hasIssues ? 'fw-chip--issues' : evaluated ? 'fw-chip--clean' : ''}"
                     style="--chip-color: ${meta.color}" data-focus-key="fw-${code}" aria-pressed="${isActive}"
@@ -331,7 +332,7 @@ function renderStatusBar(allFail, visible) {
 
     const labels = [];
     if (af) labels.push(FRAMEWORK_META[af]?.label || af);
-    if (as) labels.push(as);
+    if (as) labels.push(t('severity' + as.charAt(0).toUpperCase() + as.slice(1)));
 
     return `
         <div class="compliance-status-bar">
@@ -352,6 +353,14 @@ function renderStatusBar(allFail, visible) {
 // ── Findings grouped by category ──────────────────────────────────────────────
 
 function renderFindingsByCategory(findings, unknownCount = 0) {
+    if (findings.length === 0 && (complianceState.severityFilter || complianceState.frameworkFilter)) {
+        return `
+            <div class="findings-empty-state">
+                <div class="findings-empty-title">${t('noFilterMatchTitle')}</div>
+                <div class="findings-empty-sub">${t('noFilterMatchSub')}</div>
+            </div>
+        `;
+    }
     if (findings.length === 0) {
         return `
             <div class="findings-empty-state">

@@ -58,7 +58,11 @@ function parseConfigInfo(data) {
  * @param {Uint8Array} compressed
  * @returns {Promise<Uint8Array>}
  */
-async function decompressXZ(compressed) {
+// Config backups are a few MB; anything far beyond that is not a DSM backup
+// and would exhaust the browser's memory (decompression bomb).
+const DSS_MAX_TAR_BYTES = 256 * 1024 * 1024;
+
+async function decompressXZ(compressed, maxBytes = DSS_MAX_TAR_BYTES) {
     const XzReadableStream = window['xz-decompress']?.XzReadableStream;
     if (!XzReadableStream) {
         throw new Error('xz-decompress not loaded');
@@ -74,14 +78,19 @@ async function decompressXZ(compressed) {
     const xzStream = new XzReadableStream(inputStream);
     const reader   = xzStream.getReader();
     const chunks   = [];
+    let totalLen   = 0;
 
     while (true) {
         const { done, value } = await reader.read();
         if (done) break;
+        totalLen += value.length;
+        if (totalLen > maxBytes) {
+            await reader.cancel();
+            throw new Error(`decompressed data too large (over ${Math.round(maxBytes / 1048576)} MB)`);
+        }
         chunks.push(value);
     }
 
-    const totalLen = chunks.reduce((s, c) => s + c.length, 0);
     const result   = new Uint8Array(totalLen);
     let offset     = 0;
     for (const chunk of chunks) { result.set(chunk, offset); offset += chunk.length; }
@@ -116,10 +125,10 @@ function parseDSSFile(file) {
                 const tarEntries = parseTar(tarBytes);
 
                 // Step 3: locate required files
-                const dbEntry      = tarEntries.find(e => e.name.endsWith('_Syno_ConfBkp.db'));
-                const infoEntry    = tarEntries.find(e => e.name.endsWith('config_info'));
-                const tlsJsonEntry = tarEntries.find(e => e.name.endsWith('tls_profile/datastore.json'));
-                const tlsConfigEntries = tarEntries.filter(e => /tls_profile\/config\/[^/]+\.conf$/.test(e.name));
+                const dbEntry      = findTarEntry(tarEntries, '_Syno_ConfBkp.db');
+                const infoEntry    = findTarEntry(tarEntries, 'config_info');
+                const tlsJsonEntry = findTarEntry(tarEntries, 'tls_profile/datastore.json');
+                const tlsConfigEntries = tarEntries.filter(e => /(^|\/)tls_profile\/config\/[^/]+\.conf$/.test(e.name));
 
                 if (!dbEntry) {
                     return reject(new Error(t('errNoDb')));

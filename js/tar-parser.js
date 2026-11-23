@@ -64,6 +64,9 @@ function parseTar(buffer) {
 
         offset += BLOCK; // advance past the header
 
+        // A member whose data runs past the end is truncated: drop it and stop
+        if (fileSize > 0 && offset + fileSize > bytes.length) break;
+
         if (isRegularFile && fileSize > 0 && fullName.length > 0) {
             // slice() creates an independent copy — safe to hold after parsing
             const data = bytes.slice(offset, offset + fileSize);
@@ -77,4 +80,16 @@ function parseTar(buffer) {
     }
 
     return entries;
+}
+
+/**
+ * Find the archive member at `path`, allowing any leading directories
+ * (e.g. "ConfigBkp/" or "./ConfigBkp/") but no partial file names.
+ *
+ * @param {Array<{name: string}>} entries
+ * @param {string}                path  e.g. "config_info" or "tls_profile/datastore.json"
+ * @returns {{name: string, data: Uint8Array}|undefined}
+ */
+function findTarEntry(entries, path) {
+    return entries.find(e => e.name === path || e.name.endsWith('/' + path));
 }
