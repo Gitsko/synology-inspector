@@ -22,6 +22,7 @@ const SCRIPTS = [
     'js/checks/check-websecurity.js',
     'js/checks/check-users.js',
     'js/checks/check-maintenance.js',
+    'js/checks/check-advisories.js',
     'js/checks/check-bestpractices.js',
 ];
 

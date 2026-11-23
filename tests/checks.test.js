@@ -48,10 +48,10 @@ test('missing data is reported as unknown, never as passed', () => {
     const findings = runChecks(app, {}, { autoBackupConfigured: null });
     const unknown = [...findings.filter(f => f.status === 'unknown').map(f => f.id)].sort();
     assert.deepEqual(unknown, [
-        'syn-admin-unknown', 'syn-admins-unknown', 'syn-config-backup-unknown', 'syn-csrf-unknown',
+        'syn-admin-unknown', 'syn-admins-unknown', 'syn-advisories-unknown', 'syn-config-backup-unknown', 'syn-csrf-unknown',
         'syn-dos-unknown', 'syn-firewall-unknown', 'syn-guest-unknown', 'syn-iframe-unknown',
         'syn-ip-check-unknown', 'syn-ntlmv1-unknown', 'syn-qc-unknown', 'syn-security-updates-unknown',
-        'syn-smb1-unknown', 'syn-ssh-unknown', 'syn-telnet-unknown', 'syn-tls-unknown',
+        'syn-services-unknown', 'syn-smb1-unknown', 'syn-ssh-unknown', 'syn-telnet-unknown', 'syn-tls-unknown',
     ]);
 });
 
@@ -226,4 +226,50 @@ test('every translation key used by the checks is defined', () => {
         for (const m of src.matchAll(/\bt\('(\w+)'\s*[,)]/g)) used.add(m[1]);
     }
     assert.deepEqual([...used].filter(k => app.t(k) === k), []);
+});
+
+test('advisory status follows the fixed releases per DSM branch', () => {
+    const app = loadApp();
+    const adv = { fixes: [
+        { build: 69057, update: null, version: null },
+        { build: 86009, update: 6, version: '7.3.2-86009-6' },
+        { build: 90080, update: 2, version: '7.4.1-90080-2' },
+    ] };
+    const status = build => app.dsmAdvisoryStatus(build, adv).status;
+    assert.equal(status(42962), 'unknown');      // branch not listed
+    assert.equal(status(69057), 'vulnerable');   // no fix for this branch
+    assert.equal(status(72806), 'vulnerable');   // between listed branches
+    assert.equal(status(86003), 'vulnerable');
+    assert.equal(app.dsmAdvisoryStatus(86003, adv).version, '7.3.2-86009-6');
+    assert.equal(status(86009), 'unknown');      // fixed by an update of the same build
+    assert.equal(status(90081), 'fixed');        // newer than every fix
+    assert.equal(app.dsmAdvisoryStatus(90075, { fixes: [{ build: 90075, update: 0, version: '7.4-90075' }] }).status, 'fixed');
+});
+
+test('advisory check: vulnerable build fails, own build with pending update is unknown', () => {
+    const app = loadApp();
+    const run = (build, cfg = {}) => runChecks(app, cfg, { info: { dsm_buildnumber: String(build) } });
+    const old = byId(run(86003, { w3_runHTTP2: 'yes' }), 'syn-advisories-vulnerable');
+    assert.equal(old.severity, 'critical');
+    assert.ok(old.affectedItems.some(i => i.startsWith('SA-26:20') && i.includes('HTTP/2')));
+    const current = byId(run(90080), 'syn-advisories-unknown');
+    assert.equal(current.status, 'unknown');
+    assert.deepEqual([...current.affectedItems].map(i => i.split(' ')[0]), ['SA-26:21', 'SA-26:20', 'SA-26:19']);
+    assert.ok(ids(run(90100)).includes('syn-advisories-ok'));
+});
+
+test('optional services: enabled ones fail, all explicitly off passes', () => {
+    const app = loadApp();
+    const on = byId(runChecks(app, { NetBKP_isEnableNetBkp: '1', NFS_isEnableNFS: '1', SNMP_isEnableSNMP: '0' }), 'syn-services-enabled');
+    assert.deepEqual([...on.affectedItems], ['rsync', 'NFS']);
+    assert.ok(ids(runChecks(app, { NetBKP_isEnableNetBkp: '0', NFS_isEnableNFS: '0', SNMP_isEnableSNMP: '0' })).includes('syn-services-disabled'));
+    assert.ok(ids(runChecks(app, { NetBKP_isEnableNetBkp: '0', NFS_isEnableNFS: '0' })).includes('syn-services-unknown'));
+});
+
+test('default ports best practice only counts SSH while it is enabled', () => {
+    const app = loadApp();
+    const bp = cfg => app.runAllBestPracticesChecks(new Map(Object.entries(cfg)), null, { schedulerTasks: [] });
+    const fail = byId(bp({ w3_admin_port: '5000', w3_secure_admin_port: '5001', Terminal_isEnableSSH: '1', Terminal_SSHPort: '22' }), 'bp-default-ports');
+    assert.deepEqual([...fail.affectedItems], ['DSM HTTP 5000', 'DSM HTTPS 5001', 'SSH 22']);
+    assert.ok(ids(bp({ w3_admin_port: '5009', w3_secure_admin_port: '5010', Terminal_isEnableSSH: '0', Terminal_SSHPort: '22' })).includes('bp-custom-ports'));
 });

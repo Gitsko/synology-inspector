@@ -458,6 +458,12 @@ function renderUnknownSection(unknownFindings) {
                     </div>
                     <div class="finding-title finding-title--pass">${escapeHtml(f.title)}</div>
                 </div>
+                ${f.affectedItems?.length ? `
+                <div class="unknown-detail">
+                    ${f.description ? `<p>${escapeHtml(f.description)}</p>` : ''}
+                    <ul>${f.affectedItems.map(i => `<li>${escapeHtml(i)}</li>`).join('')}</ul>
+                    ${f.remediation ? `<p>${escapeHtml(f.remediation)}</p>` : ''}
+                </div>` : ''}
             </div>
         </div>
     `).join('');

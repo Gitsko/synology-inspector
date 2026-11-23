@@ -69,6 +69,7 @@ DSM 7.0 and later. DSM 6.x is not supported.
 | Protocols | FTP without TLS | Medium |
 | Protocols | TLS 1.0/1.1 allowed on web services (DSM, QuickConnect, reverse proxy) | Medium |
 | Protocols | SMB signing not enforced | Medium |
+| Protocols | Optional services enabled (rsync, NFS, SNMP) | Low |
 | Authentication | Automatic account blocking not configured | Medium |
 | Authentication | HTTP does not redirect to HTTPS | Medium |
 | Authentication | HSTS not enabled | Low |
@@ -84,8 +85,11 @@ DSM 7.0 and later. DSM 6.x is not supported.
 | User Accounts | More than two active administrator accounts | Low |
 | Maintenance | Automatic configuration backup not configured | Medium |
 | Maintenance | Security updates not installed automatically | Medium |
+| Maintenance | DSM build affected by a critical Synology security advisory | Critical |
 
 If the backup does not contain the data a check needs, the check is listed as "could not evaluate" instead of passed. Such checks do not affect the score.
+
+The advisory check compares the DSM build number with the fixed releases listed in `DSM_ADVISORIES` (`js/checks/check-advisories.js`). The backup does not record the installed update (the `-2` in `7.4.1-90080-2`), so an advisory fixed by an update of the device's own build is reported as "could not evaluate". When Synology publishes a new critical DSM advisory, add it to that table.
 
 ## Best Practice Checks
 
@@ -100,6 +104,7 @@ If the backup does not contain the data a check needs, the check is listed as "c
 | File Services & Storage | File Fast Clone disabled (btrfs only) |
 | Update Management | DSM installs all updates automatically (security-only or notify-only is fine) |
 | Task Scheduler | No recycle bin cleanup task configured |
+| Network | DSM or SSH on a default port (5000, 5001, 22) |
 
 ---
 

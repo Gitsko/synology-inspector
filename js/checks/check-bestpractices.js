@@ -8,12 +8,45 @@
  *   Storage:  Fast Clone (btrfs only)
  *   Updates:  Notify-only setting
  *   Scheduler: Recycle Bin cleanup task
+ *   Network:  Default ports for DSM and SSH
  */
 
 function checkBestPractices(config, _tlsProfile, parseResult) {
     const findings       = [];
     const schedulerTasks = parseResult?.schedulerTasks || [];
     const hasBtrfs       = parseResult?.hasBtrfs       ?? false;
+
+    // ── Network: default ports ─────────────────────────────────────────────────
+    // A changed port does not stop targeted attacks, but cuts noise from scanners.
+    const defaultPorts = [];
+    if (config.get('w3_admin_port') === '5000')        defaultPorts.push('DSM HTTP 5000');
+    if (config.get('w3_secure_admin_port') === '5001') defaultPorts.push('DSM HTTPS 5001');
+    if (config.get('Terminal_isEnableSSH') === '1' && config.get('Terminal_SSHPort') === '22') defaultPorts.push('SSH 22');
+    if (defaultPorts.length) {
+        findings.push({
+            id:          'bp-default-ports',
+            title:       t('bpCheckPortsFailTitle'),
+            description: t('bpCheckPortsDesc'),
+            severity:    'low',
+            status:      'fail',
+            category:    t('catBPNetwork'),
+            frameworks:  [],
+            affectedItems: defaultPorts,
+            remediation: t('bpCheckPortsRemediation'),
+        });
+    } else if (config.has('w3_admin_port') && config.has('w3_secure_admin_port')) {
+        findings.push({
+            id:          'bp-custom-ports',
+            title:       t('bpCheckPortsPassTitle'),
+            description: '',
+            severity:    'info',
+            status:      'pass',
+            category:    t('catBPNetwork'),
+            frameworks:  [],
+            affectedItems: [],
+            remediation: '',
+        });
+    }
 
     // ── SMB: Transfer Log ─────────────────────────────────────────────────────
     // Transfer log should be OFF (0) for performance; ON (1) = FAIL

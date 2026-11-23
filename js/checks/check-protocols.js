@@ -7,6 +7,7 @@
  *   3. FTP anonymous access enabled (high)
  *   4. FTP without TLS enabled      (medium)
  *   5. TLS 1.0/1.1 allowed on web services (medium)
+ *   6. Optional services rsync, NFS, SNMP enabled (low)
  */
 
 const WEAK_TLS_PROTOCOLS = ['SSLv2', 'SSLv3', 'TLSv1', 'TLSv1.1'];
@@ -147,6 +148,46 @@ function checkProtocols(config, _tlsProfile, parseResult) {
             status:      'pass',
             category:    t('catProtocols'),
             frameworks:  [fwRef('CIS', '9.2'), fwRef('NIST', 'SC-8'), fwRef('ISO', 'A.8.24')],
+            affectedItems: [],
+            remediation: '',
+        });
+    }
+
+    // ── Optional services ─────────────────────────────────────────────────────
+    // '1' = enabled, '0' = disabled (confirmed on DSM 7.4 backups).
+    const OPTIONAL_SERVICES = [
+        ['rsync', 'NetBKP_isEnableNetBkp'],
+        ['NFS',   'NFS_isEnableNFS'],
+        ['SNMP',  'SNMP_isEnableSNMP'],
+    ];
+    const servicesFw = [fwRef('CIS', '4.8'), fwRef('NIST', 'CM-7'), fwRef('ISO', 'A.8.20')];
+    const serviceValues = OPTIONAL_SERVICES.map(([name, key]) => [name, config.get(key)]);
+    const enabledServices = serviceValues.filter(([, v]) => v === '1').map(([name]) => name);
+    const allKnown = serviceValues.every(([, v]) => v === '0' || v === '1');
+
+    if (enabledServices.length) {
+        findings.push({
+            id:          'syn-services-enabled',
+            title:       t('checkServicesFailTitle'),
+            description: t('checkServicesDesc'),
+            severity:    'low',
+            status:      'fail',
+            category:    t('catProtocols'),
+            frameworks:  servicesFw,
+            affectedItems: enabledServices,
+            remediation: t('checkServicesRemediation'),
+        });
+    } else if (!allKnown) {
+        findings.push(unknownFinding('syn-services-unknown', t('checkNameServices'), t('catProtocols'), servicesFw));
+    } else {
+        findings.push({
+            id:          'syn-services-disabled',
+            title:       t('checkServicesPassTitle'),
+            description: '',
+            severity:    'info',
+            status:      'pass',
+            category:    t('catProtocols'),
+            frameworks:  servicesFw,
             affectedItems: [],
             remediation: '',
         });
