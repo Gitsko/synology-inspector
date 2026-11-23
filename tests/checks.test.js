@@ -50,7 +50,7 @@ test('missing data is reported as unknown, never as passed', () => {
     assert.deepEqual(unknown, [
         'syn-admin-unknown', 'syn-admins-unknown', 'syn-advisories-unknown', 'syn-config-backup-unknown', 'syn-csrf-unknown',
         'syn-dos-unknown', 'syn-firewall-unknown', 'syn-guest-unknown', 'syn-iframe-unknown',
-        'syn-ip-check-unknown', 'syn-ntlmv1-unknown', 'syn-qc-unknown', 'syn-security-updates-unknown',
+        'syn-ip-check-unknown', 'syn-notify-unknown', 'syn-ntlmv1-unknown', 'syn-qc-unknown', 'syn-security-updates-unknown',
         'syn-services-unknown', 'syn-smb1-unknown', 'syn-ssh-unknown', 'syn-telnet-unknown', 'syn-tls-unknown',
     ]);
 });
@@ -335,4 +335,18 @@ test('default ports best practice only counts SSH while it is enabled', () => {
     const fail = byId(bp({ w3_admin_port: '5000', w3_secure_admin_port: '5001', Terminal_isEnableSSH: '1', Terminal_SSHPort: '22' }), 'bp-default-ports');
     assert.deepEqual([...fail.affectedItems], ['DSM HTTP 5000', 'DSM HTTPS 5001', 'SSH 22']);
     assert.ok(ids(bp({ w3_admin_port: '5009', w3_secure_admin_port: '5010', Terminal_isEnableSSH: '0', Terminal_SSHPort: '22' })).includes('bp-custom-ports'));
+});
+
+test('notifications: one enabled channel passes, all off fails, a configured webhook is unknown', () => {
+    const app = loadApp();
+    const off = { NOTIFY_smtp_mail_enabled: '0', NOTIFY_pushservice_mail_enabled: '0',
+        NOTIFY_pushservice_mobile_enabled: '0', NOTIFY_sms_enable: '0' };
+    const find = cfg => [...runChecks(app, cfg)].filter(f => f.id.startsWith('syn-notify-')).map(f => `${f.id}:${f.status}`);
+    assert.deepEqual(find(off), ['syn-notify-off:fail']);
+    assert.deepEqual(find({ ...off, NOTIFY_webhookconf: 'null' }), ['syn-notify-off:fail']);
+    assert.deepEqual(find({ ...off, NOTIFY_pushservice_mobile_enabled: '1' }), ['syn-notify-ok:pass']);
+    assert.deepEqual(find({ NOTIFY_smtp_mail_enabled: '1' }), ['syn-notify-ok:pass']);
+    assert.deepEqual(find({ ...off, NOTIFY_sms_enable: 'yes' }), ['syn-notify-unknown:unknown']);
+    assert.deepEqual(find({ ...off, NOTIFY_webhookconf: '{"hooks":[{}]}' }), ['syn-notify-unknown:unknown']);
+    assert.equal(byId(runChecks(app, off), 'syn-notify-off').severity, 'low');
 });

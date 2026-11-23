@@ -5,6 +5,7 @@
  *   1. Automatic configuration backup not configured  (medium)
  *   2. SMB signing disabled                           (medium)
  *   3. Security updates not installed automatically   (medium)
+ *   4. No notification channel enabled                (low)
  */
 
 function checkMaintenance(config, _tlsProfile, parseResult) {
@@ -80,6 +81,49 @@ function checkMaintenance(config, _tlsProfile, parseResult) {
             frameworks:  updateFw,
             affectedItems: [],
             remediation: '',
+        });
+    }
+
+    // ── Notifications ─────────────────────────────────────────────────────────
+    // '1' = channel enabled, '0' = disabled (confirmed on a DSM 7.4 backup).
+    // Webhooks have no enabled flag; a stored webhook configuration cannot be
+    // verified as active, so it turns an all-off result into unknown.
+    const NOTIFY_CHANNELS = [
+        'NOTIFY_smtp_mail_enabled',
+        'NOTIFY_pushservice_mail_enabled',
+        'NOTIFY_pushservice_mobile_enabled',
+        'NOTIFY_sms_enable',
+    ];
+    const notifyFw = [fwRef('NIST', 'SI-4'), fwRef('ISO', 'A.8.16'), fwRef('NIS2', 'Art.21(b)')];
+    const notifyValues = NOTIFY_CHANNELS.map(key => config.get(key));
+    const webhookConf  = (config.get('NOTIFY_webhookconf') ?? '').trim();
+    const hasWebhook   = webhookConf !== '' && webhookConf !== 'null';
+
+    if (notifyValues.includes('1')) {
+        findings.push({
+            id:          'syn-notify-ok',
+            title:       t('checkNotifyPassTitle'),
+            description: '',
+            severity:    'info',
+            status:      'pass',
+            category:    t('catMaintenance'),
+            frameworks:  notifyFw,
+            affectedItems: [],
+            remediation: '',
+        });
+    } else if (hasWebhook || !notifyValues.every(v => v === '0')) {
+        findings.push(unknownFinding('syn-notify-unknown', t('checkNameNotify'), t('catMaintenance'), notifyFw));
+    } else {
+        findings.push({
+            id:          'syn-notify-off',
+            title:       t('checkNotifyFailTitle'),
+            description: t('checkNotifyDesc'),
+            severity:    'low',
+            status:      'fail',
+            category:    t('catMaintenance'),
+            frameworks:  notifyFw,
+            affectedItems: [],
+            remediation: t('checkNotifyRemediation'),
         });
     }
 

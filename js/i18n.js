@@ -225,6 +225,10 @@
             checkSecurityUpdatesPassTitle: 'Security Updates Are Installed Automatically',
             checkSecurityUpdatesDesc:      'DSM is set to notify only. Security fixes stay uninstalled until someone applies them manually, which leaves known vulnerabilities open in the meantime. Synology regularly patches remotely exploitable flaws in DSM.',
             checkSecurityUpdatesRemediation: 'Allow DSM to install important updates automatically: Control Panel › Update & Restore › DSM Update › Update Settings.',
+            checkNotifyFailTitle:       'No Notifications Are Enabled',
+            checkNotifyPassTitle:       'Notifications Are Enabled',
+            checkNotifyDesc:            'Email, push and SMS notifications are all off. DSM then reports blocked login attempts, failing drives or a degraded volume to nobody; problems only show up when someone logs in and looks.',
+            checkNotifyRemediation:     'Turn on email or push notifications: Control Panel › Notification › Email or Push Service.',
 
             checkSMBSigningFailTitle:   'SMB Server Signing Not Enforced',
             checkSMBSigningPassTitle:   'SMB Server Signing Enforced (Force)',
@@ -334,6 +338,7 @@
             checkNameTLS:            'TLS versions of web services',
             checkNameConfigBackup:   'Automatic configuration backup',
             checkNameSecurityUpdates: 'Automatic security updates',
+            checkNameNotify:          'Notifications',
             affectedItems:           'Affected items',
             howToFix:                'How to fix',
 
@@ -433,6 +438,7 @@
             checkNameTLS:            'TLS-Versionen der Webdienste',
             checkNameConfigBackup:   'Automatische Konfigurationssicherung',
             checkNameSecurityUpdates: 'Automatische Sicherheitsupdates',
+            checkNameNotify:          'Benachrichtigungen',
             affectedItems:           'Betroffene Elemente',
             howToFix:                'So beheben',
 
@@ -685,6 +691,10 @@
             checkSecurityUpdatesPassTitle: 'Sicherheitsupdates werden automatisch installiert',
             checkSecurityUpdatesDesc:      'DSM ist auf „Nur benachrichtigen“ eingestellt. Sicherheitskorrekturen bleiben uninstalliert, bis jemand sie von Hand einspielt; bekannte Schwachstellen bleiben so lange offen. Synology schließt in DSM regelmäßig Lücken, die aus der Ferne ausnutzbar sind.',
             checkSecurityUpdatesRemediation: 'DSM wichtige Updates automatisch installieren lassen: Systemsteuerung › Aktualisierung & Wiederherstellung › DSM-Aktualisierung › Update-Einstellungen.',
+            checkNotifyFailTitle:       'Keine Benachrichtigungen aktiviert',
+            checkNotifyPassTitle:       'Benachrichtigungen sind aktiviert',
+            checkNotifyDesc:            'E-Mail-, Push- und SMS-Benachrichtigungen sind alle aus. DSM meldet dann niemandem blockierte Anmeldeversuche, ausfallende Laufwerke oder ein beeinträchtigtes Volume; Probleme fallen erst auf, wenn sich jemand anmeldet und nachsieht.',
+            checkNotifyRemediation:     'E-Mail- oder Push-Benachrichtigungen einschalten: Systemsteuerung › Benachrichtigung › E-Mail bzw. Push-Dienst.',
 
             checkSMBSigningFailTitle:   'SMB-Serversignatur nicht erzwungen',
             checkSMBSigningPassTitle:   'SMB-Serversignatur erzwungen (Force)',

@@ -85,6 +85,7 @@ DSM 7.0 and later. DSM 6.x is not supported.
 | User Accounts | More than two active administrator accounts | Low |
 | Maintenance | Automatic configuration backup not configured | Medium |
 | Maintenance | Security updates not installed automatically | Medium |
+| Maintenance | No notification channel enabled (email, push, SMS) | Low |
 | Maintenance | DSM build affected by a critical Synology security advisory | Critical |
 
 If the backup does not contain the data a check needs, the check is listed as "could not evaluate" instead of passed. Such checks do not affect the score.
