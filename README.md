@@ -71,6 +71,7 @@ DSM 7.0 and later. DSM 6.x is not supported.
 | Protocols | SMB signing not enforced | Medium |
 | Protocols | Optional services enabled (rsync, NFS, SNMP) | Low |
 | Authentication | Automatic account blocking not configured | Medium |
+| Authentication | Account protection disabled | Low |
 | Authentication | HTTP does not redirect to HTTPS | Medium |
 | Authentication | HSTS not enabled | Low |
 | Authentication | CSRF protection not enabled | Medium |

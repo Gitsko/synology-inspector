@@ -31,6 +31,7 @@
  *   schedulerTasks:       Array                 scheduler tasks { app, state, name }
  *   autoBackupConfigured: boolean | null        true if auto config backup is configured,
  *                                               null if the backup does not contain the state
+ *   accountProtectionEnabled: boolean | null    DSM account protection switch, null if unknown
  *   hasBtrfs:             boolean               true if any volume uses btrfs
  * }
  */
@@ -167,6 +168,7 @@ function parseDSSFile(file) {
                     sharePrivileges:      extras.sharePrivileges,
                     schedulerTasks:       extras.schedulerTasks,
                     autoBackupConfigured: extras.autoBackupConfigured,
+                    accountProtectionEnabled: extras.accountProtectionEnabled,
                     hasBtrfs:             extras.hasBtrfs,
                 });
             } catch (err) {

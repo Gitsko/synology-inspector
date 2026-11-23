@@ -311,13 +311,15 @@ function buildSynoConfigMap(buffer) {
  *   confbkp_share_privilege_id_tb: share_name(0), user_or_group(1), name(3), privilege(4)
  *   confbkp_scheduler_table:     id(0), json_config(1)
  *   confbkp_auto_config_backup_table: key(0), value(1)
+ *   confbkp_smartblock_table:    key(0), value(1)
  *   confbkp_volume_tb:           vid(0), location(1), fstype(2), mount_point(3)
  *
  * Scheduler json_config is double-encoded: outer JSON object, inner values
  * are themselves JSON strings (e.g. '"SYNO.SDS.TaskScheduler.Recycle"\n').
  *
  * @param {ArrayBuffer|Uint8Array} buffer  Raw SQLite 3 database bytes
- * @returns {{ users, adminMembers, sharePrivileges, schedulerTasks, autoBackupConfigured: boolean|null, hasBtrfs }}
+ * @returns {{ users, adminMembers, sharePrivileges, schedulerTasks, autoBackupConfigured: boolean|null,
+ *             accountProtectionEnabled: boolean|null, hasBtrfs }}
  */
 function buildSynoExtras(buffer) {
     // ── Users ────────────────────────────────────────────────────────────────────
@@ -366,10 +368,20 @@ function buildSynoExtras(buffer) {
     const notSetBefore = backupMap.get('not_set_before');
     const autoBackupConfigured = notSetBefore === 'false' ? true : notSetBefore === 'true' ? false : null;
 
+    // ── Account protection ───────────────────────────────────────────────────────
+    // SmartBlock_0 is the on/off switch, stored with a leading space (' 1').
+    // SmartBlock_1..6 hold the attempt and time limits for untrusted and
+    // trusted clients (confirmed against the DSM UI on a DSM 7.4 backup).
+    const smartBlockRows = readSQLiteTable(buffer, 'confbkp_smartblock_table');
+    const smartBlockOn = smartBlockRows.find(r => r[0] === 'SmartBlock_0')?.[1];
+    const smartBlockFlag = typeof smartBlockOn === 'string' ? smartBlockOn.trim() : null;
+    const accountProtectionEnabled = smartBlockFlag === '1' ? true : smartBlockFlag === '0' ? false : null;
+
     // ── btrfs volumes ────────────────────────────────────────────────────────────
     // fstype = 3 → btrfs
     const volRows  = readSQLiteTable(buffer, 'confbkp_volume_tb');
     const hasBtrfs = volRows.some(r => Number(r[2]) === 3);
 
-    return { users, adminMembers, sharePrivileges, schedulerTasks, autoBackupConfigured, hasBtrfs };
+    return { users, adminMembers, sharePrivileges, schedulerTasks, autoBackupConfigured,
+        accountProtectionEnabled, hasBtrfs };
 }

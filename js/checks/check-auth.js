@@ -5,9 +5,10 @@
  *   1. Auto-block not configured   (medium)
  *   2. HTTPS redirect disabled     (medium)
  *   3. HSTS not enabled            (low)
+ *   4. Account protection disabled (low)
  */
 
-function checkAuth(config, _tlsProfile) {
+function checkAuth(config, _tlsProfile, parseResult) {
     const findings = [];
 
     // ── Auto-block ────────────────────────────────────────────────────────────
@@ -99,6 +100,42 @@ function checkAuth(config, _tlsProfile) {
             frameworks:  [fwRef('CIS', '9.5'), fwRef('NIST', 'SC-8'), fwRef('ISO', 'A.8.24')],
             affectedItems: [t('checkHSTSAffected')],
             remediation: t('checkHSTSRemediation'),
+        });
+    }
+
+    // ── Account protection ────────────────────────────────────────────────────
+    // Blocks an account after repeated failed logins from untrusted clients.
+    // Unlike auto-block it counts per account, so it also catches attacks
+    // spread over many source IPs.
+    const protectionFw = [fwRef('CIS', '4.10'), fwRef('NIST', 'AC-7'), fwRef('ISO', 'A.8.5')];
+    const protectionEnabled = parseResult?.accountProtectionEnabled ?? null;
+
+    if (protectionEnabled === null) {
+        findings.push(unknownFinding('syn-account-protection-unknown', t('checkNameAccountProtection'),
+            t('catAuth'), protectionFw));
+    } else if (protectionEnabled) {
+        findings.push({
+            id:          'syn-account-protection-on',
+            title:       t('checkAccountProtectionPassTitle'),
+            description: '',
+            severity:    'info',
+            status:      'pass',
+            category:    t('catAuth'),
+            frameworks:  protectionFw,
+            affectedItems: [],
+            remediation: '',
+        });
+    } else {
+        findings.push({
+            id:          'syn-account-protection-off',
+            title:       t('checkAccountProtectionFailTitle'),
+            description: t('checkAccountProtectionDesc'),
+            severity:    'low',
+            status:      'fail',
+            category:    t('catAuth'),
+            frameworks:  protectionFw,
+            affectedItems: [],
+            remediation: t('checkAccountProtectionRemediation'),
         });
     }
 

@@ -48,7 +48,7 @@ test('missing data is reported as unknown, never as passed', () => {
     const findings = runChecks(app, {}, { autoBackupConfigured: null });
     const unknown = [...findings.filter(f => f.status === 'unknown').map(f => f.id)].sort();
     assert.deepEqual(unknown, [
-        'syn-admin-unknown', 'syn-admins-unknown', 'syn-advisories-unknown', 'syn-config-backup-unknown', 'syn-csrf-unknown',
+        'syn-account-protection-unknown', 'syn-admin-unknown', 'syn-admins-unknown', 'syn-advisories-unknown', 'syn-config-backup-unknown', 'syn-csrf-unknown',
         'syn-dos-unknown', 'syn-firewall-unknown', 'syn-guest-unknown', 'syn-iframe-unknown',
         'syn-ip-check-unknown', 'syn-notify-unknown', 'syn-ntlmv1-unknown', 'syn-qc-unknown', 'syn-security-updates-unknown',
         'syn-services-unknown', 'syn-smb1-unknown', 'syn-ssh-unknown', 'syn-telnet-unknown', 'syn-tls-unknown',
@@ -349,4 +349,13 @@ test('notifications: one enabled channel passes, all off fails, a configured web
     assert.deepEqual(find({ ...off, NOTIFY_sms_enable: 'yes' }), ['syn-notify-unknown:unknown']);
     assert.deepEqual(find({ ...off, NOTIFY_webhookconf: '{"hooks":[{}]}' }), ['syn-notify-unknown:unknown']);
     assert.equal(byId(runChecks(app, off), 'syn-notify-off').severity, 'low');
+});
+
+test('account protection: enabled passes, disabled fails, missing is unknown', () => {
+    const app = loadApp();
+    const find = enabled => [...runChecks(app, {}, { accountProtectionEnabled: enabled })]
+        .filter(f => f.id.startsWith('syn-account-protection-')).map(f => `${f.id}:${f.status}:${f.severity}`);
+    assert.deepEqual(find(true), ['syn-account-protection-on:pass:info']);
+    assert.deepEqual(find(false), ['syn-account-protection-off:fail:low']);
+    assert.deepEqual(find(null), ['syn-account-protection-unknown:unknown:info']);
 });

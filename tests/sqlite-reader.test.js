@@ -112,6 +112,19 @@ test('auto config backup state needs an explicit true/false flag', () => {
     assert.equal(state(null), null);
 });
 
+test('account protection state comes from SmartBlock_0, padded as in real backups', () => {
+    const app = loadApp();
+    const state = flag => app.buildSynoExtras(buildDb(db => {
+        db.exec('CREATE TABLE confbkp_smartblock_table (key TEXT, value TEXT)');
+        db.prepare('INSERT INTO confbkp_smartblock_table VALUES (?, ?)').run('SmartBlock_0', flag);
+    })).accountProtectionEnabled;
+    assert.equal(state(' 1'), true);
+    assert.equal(state(' 0'), false);
+    assert.equal(state('yes'), null);
+    assert.equal(state(null), null);
+    assert.equal(app.buildSynoExtras(buildDb(() => {})).accountProtectionEnabled, null);
+});
+
 test('a record whose header promises more bytes than the payload holds yields null values', () => {
     const app = loadApp();
     // header: size 4, serial types 1 (1-byte int), 6 (8-byte int), 7 (float); body has only 2 bytes

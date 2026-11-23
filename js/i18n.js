@@ -151,6 +151,10 @@
             checkAutoBlockDesc:      'Without account blocking, attackers can attempt unlimited password combinations against DSM and all enabled services. Even a modest rate of attempts can eventually succeed against weak passwords.',
             checkAutoBlockAffected:  'All DSM login services',
             checkAutoBlockRemediation: 'Enable auto block in Control Panel › Security › Account › Enable auto block. Configure a low attempt count (e.g., 5 attempts in 2 minutes).',
+            checkAccountProtectionFailTitle: 'Account Protection Is Disabled',
+            checkAccountProtectionPassTitle: 'Account Protection Is Enabled',
+            checkAccountProtectionDesc:      'Auto block counts failed logins per IP address. An attacker who spreads guesses over many addresses never reaches that limit. Account protection counts per account and locks it for untrusted clients after repeated failures.',
+            checkAccountProtectionRemediation: 'Enable account protection: Control Panel › Security › Account › Account Protection.',
 
             checkHTTPSRedirectFailTitle: 'HTTP Does Not Redirect to HTTPS',
             checkHTTPSRedirectPassTitle: 'HTTP Automatically Redirects to HTTPS',
@@ -339,6 +343,7 @@
             checkNameConfigBackup:   'Automatic configuration backup',
             checkNameSecurityUpdates: 'Automatic security updates',
             checkNameNotify:          'Notifications',
+            checkNameAccountProtection: 'Account protection',
             affectedItems:           'Affected items',
             howToFix:                'How to fix',
 
@@ -439,6 +444,7 @@
             checkNameConfigBackup:   'Automatische Konfigurationssicherung',
             checkNameSecurityUpdates: 'Automatische Sicherheitsupdates',
             checkNameNotify:          'Benachrichtigungen',
+            checkNameAccountProtection: 'Kontoschutz',
             affectedItems:           'Betroffene Elemente',
             howToFix:                'So beheben',
 
@@ -617,6 +623,10 @@
             checkAutoBlockDesc:      'Ohne Kontosperrung können Angreifer unbegrenzte Passwortversuche gegen DSM und alle aktivierten Dienste starten. Bereits eine moderate Versuchsrate kann bei schwachen Passwörtern erfolgreich sein.',
             checkAutoBlockAffected:  'Alle DSM-Anmeldedienste',
             checkAutoBlockRemediation: 'Automatische Sperrung aktivieren: Systemsteuerung › Sicherheit › Konto › Automatische Sperrung aktivieren. Niedrige Schwellenwerte konfigurieren (z. B. 5 Versuche in 2 Minuten).',
+            checkAccountProtectionFailTitle: 'Kontoschutz ist deaktiviert',
+            checkAccountProtectionPassTitle: 'Kontoschutz ist aktiviert',
+            checkAccountProtectionDesc:      'Die automatische Blockierung zählt Fehlversuche je IP-Adresse. Wer seine Versuche auf viele Adressen verteilt, erreicht dieses Limit nie. Der Kontoschutz zählt je Konto und sperrt es nach wiederholten Fehlversuchen für nicht vertrauenswürdige Clients.',
+            checkAccountProtectionRemediation: 'Kontoschutz aktivieren: Systemsteuerung › Sicherheit › Konto › Kontoschutz.',
 
             checkHTTPSRedirectFailTitle: 'HTTP leitet nicht auf HTTPS um',
             checkHTTPSRedirectPassTitle: 'HTTP leitet automatisch auf HTTPS um',
