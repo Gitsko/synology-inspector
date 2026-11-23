@@ -129,7 +129,7 @@ function _renderBPFindingsByCategory(findings) {
     if (findings.length === 0) {
         return `
             <div class="findings-empty-state">
-                <div class="findings-empty-icon">✓</div>
+                <div class="findings-empty-icon" aria-hidden="true">✓</div>
                 <div class="findings-empty-title">${t('bpNoIssuesTitle')}</div>
                 <div class="findings-empty-sub">${t('bpNoIssuesSub')}</div>
             </div>

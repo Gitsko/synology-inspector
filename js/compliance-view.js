@@ -14,10 +14,10 @@
 // ── Framework display metadata ────────────────────────────────────────────────
 
 const FRAMEWORK_META = {
-    CIS:  { label: 'CIS Controls v8',  color: '#b8400a' },
+    CIS:  { label: 'CIS Controls v8',  color: '#a3380a' },
     NIST: { label: 'NIST SP 800-53',   color: '#1d4ed8' },
     ISO:  { label: 'ISO 27001:2022',   color: '#6d28d9' },
-    NIS2: { label: 'NIS2 Directive',   color: '#047857' },
+    NIS2: { label: 'NIS2 Directive',   color: '#036b4d' },
     PCI:  { label: 'PCI DSS v4',       color: '#9a3412' },
 };
 
@@ -119,6 +119,8 @@ function rerenderCompliance(announceCount = false) {
     if (!_cachedFindings) return;
     const el = document.getElementById('compliance-view-root');
     if (!el) return;
+    // The popover anchor is replaced by the re-render
+    closeFwRefPopover();
     const scrollArea = el.querySelector('.findings-scroll-area');
     const scrollTop  = scrollArea ? scrollArea.scrollTop : 0;
     rerenderKeepingFocus(() => {
@@ -126,7 +128,7 @@ function rerenderCompliance(announceCount = false) {
         const newScroll = el.querySelector('.findings-scroll-area');
         if (newScroll) newScroll.scrollTop = scrollTop;
     });
-    if (announceCount) announce(t('announceFiltered', _complianceVisibleCount));
+    if (announceCount) announce(t('announceFiltered', findingCountText(_complianceVisibleCount)));
 }
 
 // ── FW reference popover ──────────────────────────────────────────────────────
@@ -140,6 +142,7 @@ function showFwRefPopover(label, anchorEl) {
     pop.id = 'fw-ref-popover';
     pop.className = 'fw-ref-popover';
     pop.setAttribute('role', 'tooltip');
+    pop.lang = 'en';
     pop.innerHTML = `
         <div class="fw-ref-popover-label">${escapeHtml(label)}</div>
         <div class="fw-ref-popover-title">${escapeHtml(info.title)}</div>
@@ -158,7 +161,9 @@ function showFwRefPopover(label, anchorEl) {
 
     _fwRefAnchor = anchorEl;
     anchorEl.setAttribute('aria-describedby', pop.id);
-    announce(`${label}: ${info.title}. ${info.body}`);
+    anchorEl.addEventListener('blur', closeFwRefPopover, { once: true });
+    // Reference texts exist in English only
+    announce(`${label}: ${info.title}. ${info.body}`, 'en');
 
     setTimeout(() => document.addEventListener('click', closeFwRefPopover, { once: true }), 0);
     document.addEventListener('keydown', _fwRefKeyHandler);
@@ -169,6 +174,7 @@ let _fwRefAnchor = null;
 function closeFwRefPopover() {
     document.getElementById('fw-ref-popover')?.remove();
     _fwRefAnchor?.removeAttribute('aria-describedby');
+    _fwRefAnchor?.removeEventListener('blur', closeFwRefPopover);
     _fwRefAnchor = null;
     document.removeEventListener('click', closeFwRefPopover);
     document.removeEventListener('keydown', _fwRefKeyHandler);
@@ -233,7 +239,8 @@ function renderScoreHeader(allFindings, failFindings, score) {
 
     const kpiTiles = [
         { key: 'critical', labelKey: 'severityCritical', color: '#aa0808' },
-        { key: 'high',     labelKey: 'severityHigh',     color: '#e76500' },
+        // Darker than SEVERITY_COLOR.high: the count needs 3:1 on the active tile tint
+        { key: 'high',     labelKey: 'severityHigh',     color: '#d45d00' },
         { key: 'medium',   labelKey: 'severityMedium',   color: '#b44f00' },
         { key: 'low',      labelKey: 'severityLow',      color: '#0064d9' },
     ].map(({ key, labelKey, color }) => {
@@ -273,8 +280,8 @@ function renderScoreHeader(allFindings, failFindings, score) {
                     title="${meta.label}">
                 ${code}
                 ${hasIssues
-                    ? `<span class="fw-chip-count">${stats.fail}</span>`
-                    : evaluated ? '<span class="fw-chip-clean">✓</span>' : ''}
+                    ? `<span class="fw-chip-count" aria-hidden="true">${stats.fail}</span><span class="visually-hidden">: ${findingCountText(stats.fail)}</span>`
+                    : evaluated ? `<span class="fw-chip-clean" aria-hidden="true">✓</span><span class="visually-hidden">: ${t('fwChipClean')}</span>` : ''}
             </button>
         `;
     }).join('');
@@ -348,7 +355,7 @@ function renderFindingsByCategory(findings, unknownCount = 0) {
     if (findings.length === 0) {
         return `
             <div class="findings-empty-state">
-                <div class="findings-empty-icon">✓</div>
+                <div class="findings-empty-icon" aria-hidden="true">✓</div>
                 <div class="findings-empty-title">${t('noFindingsTitle')}</div>
                 <div class="findings-empty-sub">${unknownCount ? t('noFindingsSubUnknown', unknownCount) : t('noFindingsSub')}</div>
             </div>

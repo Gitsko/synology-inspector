@@ -301,6 +301,10 @@
     color: var(--color-text-3);
 }
 
+/* --color-text-3 drops below 4.5:1 on the stronger tint */
+.kpi-tile--active .kpi-label,
+.kpi-tile:hover:not(.kpi-tile--empty) .kpi-label { color: var(--color-text-1); }
+
 /* ── Framework filter chips ──────────────────────────────────────────────────── */
 .fw-filter-row {
     display: flex;
@@ -338,7 +342,7 @@
 
 .fw-chip:hover              { color: var(--chip-color); border-color: var(--chip-color); background: var(--color-bg-panel); }
 .fw-chip--active            { color: var(--chip-color); background: color-mix(in srgb, var(--chip-color) 8%, white); border-color: var(--chip-color); box-shadow: 0 0 0 1px var(--chip-color); }
-.fw-chip--issues .fw-chip-count { font-size: 9px; color: var(--chip-color); opacity: .9; }
+.fw-chip--issues .fw-chip-count { font-size: 9px; color: var(--chip-color); }
 .fw-chip--clean .fw-chip-clean  { font-size: 10px; color: var(--color-success); }
 
 .chip-clear-btn {
@@ -563,7 +567,7 @@
 .severity-pill--low      { background: var(--sapInformationBackground, #e1f4ff); color: var(--sapHighlightColor, #0064d9); }
 .severity-pill--info     { background: var(--color-bg-strip);               color: var(--color-text-3); }
 .severity-pill--pass     { background: var(--sapSuccessBackground, #f5fae5); color: var(--sapPositiveColor,  #256f3a); }
-.severity-pill--unknown  { background: var(--sapNeutralBackground, #f5f6f7); color: var(--sapNeutralColor, #556b82); }
+.severity-pill--unknown  { background: var(--sapNeutralBackground, #f5f6f7); color: var(--color-text-3); } /* --sapNeutralColor is 2.9:1 here */
 
 .finding-category {
     font-size: 10px;
@@ -578,7 +582,7 @@
     color: var(--color-text-3);
 }
 
-.finding-fw-tags { display: flex; flex-wrap: wrap; gap: 4px; }
+.finding-fw-tags { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; }
 
 .fw-tag {
     font-family: var(--font-mono);
@@ -595,9 +599,10 @@
     display: inline-flex; align-items: center;
     min-height: 24px;
     cursor: pointer;
-    transition: filter .1s;
+    transition: border-color .1s;
 }
-.fw-tag--clickable:hover { filter: brightness(.88); }
+/* Border instead of a brightness filter: darkening would lower the text contrast */
+.fw-tag--clickable:hover { border-color: currentColor; }
 
 /* ── Framework reference popover ─────────────────────────────────────────────── */
 .fw-ref-popover {
@@ -863,12 +868,12 @@
     background: var(--sapNeutralBackground, #f5f6f7);
     border-color: color-mix(in srgb, var(--sapNeutralColor, #556b82) 25%, transparent);
     border-left-color: var(--sapNeutralColor, #556b82);
-    color: var(--sapNeutralColor, #556b82);
+    color: var(--color-text-3); /* --sapNeutralColor is 2.9:1 on this background */
 }
 
 .unknown-count {
     background: color-mix(in srgb, var(--sapNeutralColor, #556b82) 12%, transparent);
-    color: var(--sapNeutralColor, #556b82);
+    color: var(--color-text-3);
 }
 
 .unknown-section-hint {
@@ -894,7 +899,7 @@
 }
 
 /* ── Small viewports / high zoom (WCAG 1.4.10 Reflow) ────────────────────────── */
-@media (max-width: 640px), (max-height: 480px) {
+@media (max-width: 720px), (max-height: 560px) {
     .results-shell,
     .compliance-view,
     .bestpractices-view { height: auto; overflow: visible; }

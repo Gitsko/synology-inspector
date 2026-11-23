@@ -235,14 +235,15 @@ function processFile(file) {
             _appPhase    = 'results';
             renderApp();
             document.getElementById('view-heading')?.focus();
-            announce(t('announceLoaded', _complianceVisibleCount));
+            announce(t('announceLoaded', findingCountText(_complianceVisibleCount)));
         })
         .catch(err => {
             _errorMessage = err.message || String(err);
             _appPhase     = 'error';
             renderApp();
             document.querySelector('.error-title')?.focus();
-            announce(`${t('errUnknown')}: ${_errorMessage}`);
+            // The focused heading already reads the error title
+            announce(_errorMessage);
         });
 }
 
@@ -252,6 +253,7 @@ function resetApp() {
     _errorMessage = '';
     _activeTab    = 'security';
     renderApp();
+    announce('');
     document.getElementById('drop-zone-btn')?.focus();
 }
 
@@ -266,13 +268,29 @@ function openFilePicker() {
 
 // ── Accessibility helpers ──────────────────────────────────────────────────────
 
-/** Announce a message through the persistent live region in index.html. */
-function announce(message) {
+let _announceTimer = null;
+
+/**
+ * Announce a message through the persistent live region in index.html.
+ * An empty message clears the region. lang marks text in another language.
+ */
+function announce(message, lang) {
     const region = document.getElementById('app-status');
     if (!region) return;
+    clearTimeout(_announceTimer);
     region.textContent = '';
+    region.removeAttribute('lang');
+    if (!message) return;
     // A short delay makes screen readers announce identical consecutive messages
-    setTimeout(() => { region.textContent = message; }, 50);
+    _announceTimer = setTimeout(() => {
+        if (lang) region.lang = lang;
+        region.textContent = message;
+    }, 50);
+}
+
+/** "1 issue" / "3 issues" in the current language. */
+function findingCountText(count) {
+    return `${count} ${count === 1 ? t('findingSingular') : t('findingPlural')}`;
 }
 
 /**
@@ -405,6 +423,8 @@ function updateLangButtons() {
     if (aboutLabel) aboutLabel.textContent = t('aboutHeaderBtn');
     document.querySelector('.lang-toggle')?.setAttribute('aria-label', t('langGroupLabel'));
     document.querySelector('.about-modal-close')?.setAttribute('aria-label', t('closeLabel'));
+    const subtitle = document.querySelector('.header-subtitle');
+    if (subtitle) subtitle.textContent = t('appSubtitle');
 }
 
 // ── Bootstrap ─────────────────────────────────────────────────────────────────

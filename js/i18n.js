@@ -342,8 +342,9 @@
             scoreAriaLabel:   'Security score',
             findingsRegionLabel: 'Findings',
             contextBarLabel: 'Backup details',
-            announceLoaded:   'Backup analysed: {0} findings.',
-            announceFiltered: '{0} findings shown.',
+            fwChipClean: 'no issues',
+            announceLoaded:   'Backup analysed: {0}.',
+            announceFiltered: '{0} shown.',
             aboutMaker:       'JKLP CONSULTING · SECURITY AUDIT',
             aboutDesc:        'Synology Inspector analyses Synology DSM configuration backups (.dss) directly in your browser — no data is ever uploaded. It checks your NAS configuration against security best practices and common compliance frameworks.',
             aboutChannelName: 'JKLP Consulting',
@@ -437,8 +438,9 @@
             scoreAriaLabel:   'Sicherheitsbewertung',
             findingsRegionLabel: 'Befunde',
             contextBarLabel: 'Details der Sicherung',
-            announceLoaded:   'Sicherung analysiert: {0} Befunde.',
-            announceFiltered: '{0} Befunde angezeigt.',
+            fwChipClean: 'keine Befunde',
+            announceLoaded:   'Sicherung analysiert: {0}.',
+            announceFiltered: '{0} angezeigt.',
             aboutMaker:       'JKLP CONSULTING · SICHERHEITSAUDIT',
             aboutDesc:        'Synology Inspector analysiert Synology DSM-Konfigurationssicherungen (.dss) direkt im Browser – ohne Datenübertragung. Er prüft die NAS-Konfiguration gegen Sicherheits-Best-Practices und gängige Compliance-Frameworks.',
             aboutChannelName: 'JKLP Consulting',
@@ -735,6 +737,7 @@
     // ── Runtime ────────────────────────────────────────────────────────────────
 
     let _lang = localStorage.getItem('syno-inspector-lang') || 'en';
+    document.documentElement.lang = _lang;
 
     window.t = function (key, ...args) {
         let str = (STRINGS[_lang] && STRINGS[_lang][key]) ||

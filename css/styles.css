@@ -224,7 +224,7 @@ h1, h2, h3 { font-size: inherit; font-weight: inherit; }
 .about-modal {
     margin: auto; padding: 0; border: none; background: transparent;
     width: 480px; max-width: calc(100% - 32px); max-height: calc(100% - 32px);
-    overflow: visible;
+    overflow-y: auto; /* content can exceed small or zoomed viewports */
 }
 .about-modal::backdrop { background: rgba(0,0,0,.45); }
 .about-modal-panel {
@@ -321,7 +321,7 @@ h1, h2, h3 { font-size: inherit; font-weight: inherit; }
 
 /* ── Small viewports / high zoom (WCAG 1.4.10 Reflow) ───────────────────── */
 /* The page scrolls as a whole instead of the fixed app-shell layout */
-@media (max-width: 640px), (max-height: 480px) {
+@media (max-width: 720px), (max-height: 560px) {
     html, body { height: auto; }
     body { overflow: visible; }
     #app { overflow: visible; }
@@ -332,6 +332,6 @@ h1, h2, h3 { font-size: inherit; font-weight: inherit; }
     .lang-toggle { padding: 8px 12px; }
     .context-bar { height: auto; flex-wrap: wrap; row-gap: 4px; padding: 8px 12px; }
     .context-item { padding: 0 12px 0 0; border-right: none; min-width: 0; }
-    .context-value { max-width: 100%; }
+    .context-value { max-width: 100%; white-space: normal; overflow-wrap: anywhere; }
     .context-actions { margin-left: 0; padding-left: 0; display: flex; flex-wrap: wrap; }
 }
