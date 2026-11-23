@@ -70,6 +70,7 @@ function sqliteReadSignedInt(bytes, offset, len) {
  * @returns {Uint8Array}
  */
 function sqliteReadCellPayload(bytes, offset, payloadLen, pageSize, usableSize) {
+    if (payloadLen > bytes.length) throw new RangeError('payload length exceeds database size');
     const maxLocal = usableSize - 35;
     if (payloadLen <= maxLocal) {
         return bytes.slice(offset, offset + payloadLen);
@@ -133,8 +134,10 @@ function sqliteDecodeRecord(payload) {
         } else if (st >= 1 && st <= 6) {
             // Big-endian two's complement integers of 1, 2, 3, 4, 6 or 8 bytes
             const len = SQLITE_INT_SIZES[st];
+            if (pos + len > payload.length) { values.push(null); pos = payload.length; continue; }
             values.push(sqliteReadSignedInt(payload, pos, len)); pos += len;
         } else if (st === 7) {
+            if (pos + 8 > payload.length) { values.push(null); pos = payload.length; continue; }
             const view = new DataView(payload.buffer, payload.byteOffset + pos, 8);
             values.push(view.getFloat64(0, false)); pos += 8;
         } else if (st === 8) {
@@ -143,6 +146,7 @@ function sqliteDecodeRecord(payload) {
             values.push(1);
         } else if (st >= 12 && st % 2 === 0) {
             const len = (st - 12) / 2;
+            if (pos + len > payload.length) { values.push(null); pos = payload.length; continue; }
             values.push(payload.slice(pos, pos + len)); pos += len;
         } else if (st >= 13 && st % 2 === 1) {
             const len = (st - 13) / 2;
@@ -195,10 +199,9 @@ function sqliteScanBTree(bytes, pageNum, pageSize, usableSize) {
             const rowIdV = sqliteReadVarint(bytes, cellOffset);
             cellOffset += rowIdV.length;
 
-            const payload = sqliteReadCellPayload(
-                bytes, cellOffset, payloadLenV.value, pageSize, usableSize);
-
             try {
+                const payload = sqliteReadCellPayload(
+                    bytes, cellOffset, payloadLenV.value, pageSize, usableSize);
                 results.push(sqliteDecodeRecord(payload));
             } catch (_) {
                 // Skip malformed records rather than aborting the scan

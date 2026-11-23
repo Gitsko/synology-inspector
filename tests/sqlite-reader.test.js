@@ -111,3 +111,28 @@ test('auto config backup state needs an explicit true/false flag', () => {
     assert.equal(state('true'), false);
     assert.equal(state(null), null);
 });
+
+test('a record whose header promises more bytes than the payload holds yields null values', () => {
+    const app = loadApp();
+    // header: size 4, serial types 1 (1-byte int), 6 (8-byte int), 7 (float); body has only 2 bytes
+    const payload = new Uint8Array([4, 1, 6, 7, 0x2a, 0x01]);
+    assert.deepEqual(plain(app.sqliteDecodeRecord(payload)), [42, null, null]);
+});
+
+test('a cell with an impossible payload length is skipped, not fatal', () => {
+    const app = loadApp();
+    const bytes = buildDb(db => {
+        db.exec('CREATE TABLE confbkp_config_tb (config_key TEXT, config_value TEXT)');
+        const ins = db.prepare('INSERT INTO confbkp_config_tb VALUES (?, ?)');
+        ins.run('A', 'first');
+        ins.run('B', 'second');
+    });
+    // Corrupt the payload length varint of the first cell on the table's leaf page
+    const pageSize = (bytes[16] << 8) | bytes[17];
+    const leaf = pageSize;                                   // page 2
+    const cellPtr = (bytes[leaf + 8] << 8) | bytes[leaf + 9];
+    bytes.fill(0xff, leaf + cellPtr, leaf + cellPtr + 9);   // 9-byte varint: far beyond any allocatable size
+    let map;
+    assert.doesNotThrow(() => { map = app.buildSynoConfigMap(bytes); });
+    assert.ok(map.size <= 2);
+});
