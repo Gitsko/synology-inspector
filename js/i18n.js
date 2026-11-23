@@ -204,6 +204,10 @@
             checkConfigBackupPassTitle: 'Automatic Configuration Backup Is Configured',
             checkConfigBackupDesc:      'Without a scheduled configuration backup, a hardware failure, ransomware attack, or misconfiguration could make recovery difficult or impossible. Synology DSM supports automated backups to a local share.',
             checkConfigBackupRemediation: 'Configure automatic configuration backup: Control Panel › Update & Restore › Configuration Backup › Back Up Configuration.',
+            checkSecurityUpdatesFailTitle: 'Security Updates Are Not Installed Automatically',
+            checkSecurityUpdatesPassTitle: 'Security Updates Are Installed Automatically',
+            checkSecurityUpdatesDesc:      'DSM is set to notify only. Security fixes stay uninstalled until someone applies them manually, which leaves known vulnerabilities open in the meantime. Synology regularly patches remotely exploitable flaws in DSM.',
+            checkSecurityUpdatesRemediation: 'Allow DSM to install important updates automatically: Control Panel › Update & Restore › DSM Update › Update Settings.',
 
             checkSMBSigningFailTitle:   'SMB Server Signing Not Enforced',
             checkSMBSigningPassTitle:   'SMB Server Signing Enforced (Force)',
@@ -241,10 +245,10 @@
             bpCheckFastCloneDesc:               'Fast Clone uses btrfs reflinks to create instant, space-efficient file copies without duplicating data on disk. This is a major performance feature for virtual machine storage, Docker volumes, and backup workflows.',
             bpCheckFastCloneRemediation:        'Enable File Fast Clone: Control Panel › File Services › Advanced › Enable file fast clone.',
 
-            bpCheckUpdateNotifyPassTitle:       'DSM Updates Are Set to Notify Only',
-            bpCheckUpdateNotifyFailTitle:       'DSM Updates Are Not Set to Notify Only',
-            bpCheckUpdateNotifyDesc:            'Automatic DSM updates can cause unplanned downtime and introduce incompatibilities with installed packages or running containers. "Notify only" mode ensures you remain in full control of when updates are applied.',
-            bpCheckUpdateNotifyRemediation:     'Change update setting to "Notify me, then let me decide": Control Panel › Update & Restore › DSM Update.',
+            bpCheckUpdateNotifyPassTitle:       'DSM Feature Updates Are Not Installed Automatically',
+            bpCheckUpdateNotifyFailTitle:       'DSM Installs All Updates Automatically',
+            bpCheckUpdateNotifyDesc:            'Automatic installation of all DSM updates, including feature releases, can cause unplanned downtime and introduce incompatibilities with installed packages or running containers. Installing only important security updates automatically, or being notified, keeps feature updates under your control.',
+            bpCheckUpdateNotifyRemediation:     'Change the update setting to install only important updates automatically, or to notify only: Control Panel › Update & Restore › DSM Update › Update Settings.',
 
             bpCheckRecycleTaskPassTitle:        'Recycle Bin Cleanup Task Is Configured',
             bpCheckRecycleTaskFailTitle:        'No Recycle Bin Cleanup Task Found',
@@ -282,6 +286,7 @@
             checkNameSMBMinProto:    'SMB minimum protocol',
             checkNameAdmin:          'Default admin account',
             checkNameConfigBackup:   'Automatic configuration backup',
+            checkNameSecurityUpdates: 'Automatic security updates',
             affectedItems:           'Affected items',
             howToFix:                'How to fix',
 
@@ -341,6 +346,7 @@
             checkNameSMBMinProto:    'SMB-Mindestprotokoll',
             checkNameAdmin:          'Standard-Admin-Konto',
             checkNameConfigBackup:   'Automatische Konfigurationssicherung',
+            checkNameSecurityUpdates: 'Automatische Sicherheitsupdates',
             affectedItems:           'Betroffene Elemente',
             howToFix:                'So beheben',
 
@@ -563,6 +569,10 @@
             checkConfigBackupPassTitle: 'Automatische Konfigurationssicherung ist konfiguriert',
             checkConfigBackupDesc:      'Ohne geplante Konfigurationssicherung kann ein Hardwareausfall, Ransomware-Angriff oder eine Fehlkonfiguration die Wiederherstellung erheblich erschweren oder unmöglich machen. DSM unterstützt automatische Sicherungen auf einer lokalen Freigabe.',
             checkConfigBackupRemediation: 'Automatische Konfigurationssicherung einrichten: Systemsteuerung › Aktualisierung & Wiederherstellung › Konfigurationssicherung.',
+            checkSecurityUpdatesFailTitle: 'Sicherheitsupdates werden nicht automatisch installiert',
+            checkSecurityUpdatesPassTitle: 'Sicherheitsupdates werden automatisch installiert',
+            checkSecurityUpdatesDesc:      'DSM ist auf „Nur benachrichtigen“ eingestellt. Sicherheitskorrekturen bleiben uninstalliert, bis jemand sie von Hand einspielt; bekannte Schwachstellen bleiben so lange offen. Synology schließt in DSM regelmäßig Lücken, die aus der Ferne ausnutzbar sind.',
+            checkSecurityUpdatesRemediation: 'DSM wichtige Updates automatisch installieren lassen: Systemsteuerung › Aktualisierung & Wiederherstellung › DSM-Aktualisierung › Update-Einstellungen.',
 
             checkSMBSigningFailTitle:   'SMB-Serversignatur nicht erzwungen',
             checkSMBSigningPassTitle:   'SMB-Serversignatur erzwungen (Force)',
@@ -600,10 +610,10 @@
             bpCheckFastCloneDesc:               'Fast Clone nutzt btrfs-Reflinks, um sofortige, platzsparende Dateikopien ohne Datenduplizierung zu erstellen. Dies ist ein entscheidendes Performance-Feature für VM-Storage, Docker-Volumes und Backup-Workflows.',
             bpCheckFastCloneRemediation:        'File Fast Clone aktivieren: Systemsteuerung › Dateidienste › Erweitert › Datei-Fast-Clone aktivieren.',
 
-            bpCheckUpdateNotifyPassTitle:       'DSM-Updates sind auf "Nur benachrichtigen" eingestellt',
-            bpCheckUpdateNotifyFailTitle:       'DSM-Updates sind nicht auf "Nur benachrichtigen" eingestellt',
-            bpCheckUpdateNotifyDesc:            'Automatische DSM-Updates können ungeplante Ausfallzeiten verursachen und Inkompatibilitäten mit installierten Paketen oder laufenden Containern einführen. Der Modus "Nur benachrichtigen" stellt sicher, dass Sie die volle Kontrolle behalten.',
-            bpCheckUpdateNotifyRemediation:     'Update-Einstellung ändern: Systemsteuerung › Aktualisierung & Wiederherstellung › DSM-Aktualisierung › "Benachrichtigen und selbst entscheiden".',
+            bpCheckUpdateNotifyPassTitle:       'DSM-Funktionsupdates werden nicht automatisch installiert',
+            bpCheckUpdateNotifyFailTitle:       'DSM installiert alle Updates automatisch',
+            bpCheckUpdateNotifyDesc:            'Werden alle DSM-Updates einschließlich neuer Funktionsversionen automatisch installiert, kann das ungeplante Ausfallzeiten und Inkompatibilitäten mit installierten Paketen oder laufenden Containern verursachen. Wer nur wichtige Sicherheitsupdates automatisch installieren oder sich benachrichtigen lässt, behält Funktionsupdates unter Kontrolle.',
+            bpCheckUpdateNotifyRemediation:     'Update-Einstellung ändern, sodass nur wichtige Updates automatisch installiert werden oder nur benachrichtigt wird: Systemsteuerung › Aktualisierung & Wiederherstellung › DSM-Aktualisierung › Update-Einstellungen.',
 
             bpCheckRecycleTaskPassTitle:        'Papierkorb-Bereinigungsaufgabe ist konfiguriert',
             bpCheckRecycleTaskFailTitle:        'Keine Papierkorb-Bereinigungsaufgabe gefunden',

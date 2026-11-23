@@ -211,7 +211,9 @@ function checkBestPractices(config, _tlsProfile, parseResult) {
         }
     }
 
-    // ── DSM update setting: notify only ───────────────────────────────────────
+    // ── DSM update setting: no fully automatic updates ────────────────────────
+    // 'notify' and 'hotfix-security' (security fixes only) both keep feature
+    // updates under manual control; any other value installs all updates.
     let updateType = null;
     try {
         const raw = config.get('UPDATE_setting_v4');
@@ -219,7 +221,7 @@ function checkBestPractices(config, _tlsProfile, parseResult) {
     } catch (_) {}
 
     if (updateType !== null) {
-        if (updateType !== 'notify') {
+        if (updateType !== 'notify' && updateType !== 'hotfix-security') {
             findings.push({
                 id:          'bp-update-auto',
                 title:       t('bpCheckUpdateNotifyFailTitle'),
