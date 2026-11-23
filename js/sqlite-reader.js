@@ -6,9 +6,8 @@
  * as arrays of column values.
  *
  * Supported page types: leaf table (0x0D), interior table (0x05).
- * Overflow pages are NOT followed — values larger than the inline threshold
- * will be truncated. All security-relevant keys in the Synology .dss backup
- * fit within the inline payload, so this is safe for our use case.
+ * Overflow pages are followed, so values larger than the inline threshold
+ * (e.g. NOTIFY_filter, DDNS_provider) are read completely.
  *
  * SQLite 3 format reference: https://www.sqlite.org/fileformat.html
  */
@@ -44,6 +43,61 @@ function sqliteReadVarint(bytes, offset) {
     return { value, length };
 }
 
+/** Byte length of the integer serial types 1–6. */
+const SQLITE_INT_SIZES = [0, 1, 2, 3, 4, 6, 8];
+
+/**
+ * Read a big-endian two's complement integer of `len` bytes.
+ * 8-byte values outside the safe integer range lose precision.
+ */
+function sqliteReadSignedInt(bytes, offset, len) {
+    let v = 0n;
+    for (let i = 0; i < len; i++) v = (v << 8n) | BigInt(bytes[offset + i]);
+    const bits = BigInt(len * 8);
+    if (v & (1n << (bits - 1n))) v -= 1n << bits;
+    return Number(v);
+}
+
+/**
+ * Assemble the full payload of a table b-tree cell, following overflow pages.
+ * See "Cell Payload Overflow Pages" in the SQLite file format reference.
+ *
+ * @param {Uint8Array} bytes        Full database bytes
+ * @param {number}     offset       Offset of the first payload byte
+ * @param {number}     payloadLen   Total payload length (P)
+ * @param {number}     pageSize
+ * @param {number}     usableSize   Page size minus reserved bytes (U)
+ * @returns {Uint8Array}
+ */
+function sqliteReadCellPayload(bytes, offset, payloadLen, pageSize, usableSize) {
+    const maxLocal = usableSize - 35;
+    if (payloadLen <= maxLocal) {
+        return bytes.slice(offset, offset + payloadLen);
+    }
+
+    const minLocal = Math.floor((usableSize - 12) * 32 / 255) - 23;
+    const k        = minLocal + ((payloadLen - minLocal) % (usableSize - 4));
+    const localLen = k <= maxLocal ? k : minLocal;
+
+    const payload = new Uint8Array(payloadLen);
+    payload.set(bytes.subarray(offset, offset + localLen), 0);
+
+    let written  = localLen;
+    let nextPage = sqliteReadU32(bytes, offset + localLen);
+    const visited = new Set();
+    while (written < payloadLen && nextPage !== 0 && !visited.has(nextPage)) {
+        visited.add(nextPage);
+        const pageOffset = (nextPage - 1) * pageSize;
+        if (pageOffset + 4 > bytes.length) break;
+        const chunkLen = Math.min(usableSize - 4, payloadLen - written);
+        payload.set(bytes.subarray(pageOffset + 4, pageOffset + 4 + chunkLen), written);
+        written  += chunkLen;
+        nextPage  = sqliteReadU32(bytes, pageOffset);
+    }
+
+    return written === payloadLen ? payload : payload.slice(0, written);
+}
+
 // ── Record decoder ────────────────────────────────────────────────────────────
 
 /**
@@ -74,20 +128,13 @@ function sqliteDecodeRecord(payload) {
 
         if (st === 0) {
             values.push(null);
-        } else if (st === 1) {
-            values.push(payload[pos]); pos += 1;
-        } else if (st === 2) {
-            values.push((payload[pos] << 8) | payload[pos + 1]); pos += 2;
-        } else if (st === 3) {
-            values.push((payload[pos] << 16) | (payload[pos + 1] << 8) | payload[pos + 2]); pos += 3;
-        } else if (st === 4) {
-            values.push(sqliteReadU32(payload, pos)); pos += 4;
-        } else if (st === 5) {
-            let v = 0;
-            for (let i = 0; i < 6; i++) v = v * 256 + payload[pos + i];
-            values.push(v); pos += 6;
-        } else if (st === 6 || st === 7) {
-            values.push(null); pos += 8; // 8-byte int / float — not needed
+        } else if (st >= 1 && st <= 6) {
+            // Big-endian two's complement integers of 1, 2, 3, 4, 6 or 8 bytes
+            const len = SQLITE_INT_SIZES[st];
+            values.push(sqliteReadSignedInt(payload, pos, len)); pos += len;
+        } else if (st === 7) {
+            const view = new DataView(payload.buffer, payload.byteOffset + pos, 8);
+            values.push(view.getFloat64(0, false)); pos += 8;
         } else if (st === 8) {
             values.push(0);
         } else if (st === 9) {
@@ -117,9 +164,10 @@ function sqliteDecodeRecord(payload) {
  * @param {Uint8Array} bytes      Full database bytes
  * @param {number}     pageNum    1-based page number to scan
  * @param {number}     pageSize   Database page size in bytes
+ * @param {number}     usableSize Page size minus reserved bytes per page
  * @returns {Array[]}
  */
-function sqliteScanBTree(bytes, pageNum, pageSize) {
+function sqliteScanBTree(bytes, pageNum, pageSize, usableSize) {
     const results = [];
     const pageOffset = (pageNum - 1) * pageSize;
     const isPage1   = (pageNum === 1);
@@ -145,9 +193,8 @@ function sqliteScanBTree(bytes, pageNum, pageSize) {
             const rowIdV = sqliteReadVarint(bytes, cellOffset);
             cellOffset += rowIdV.length;
 
-            // Inline payload (may be truncated if cell has overflow pages)
-            const inlineLen = Math.min(payloadLenV.value, bytes.length - cellOffset);
-            const payload   = bytes.slice(cellOffset, cellOffset + inlineLen);
+            const payload = sqliteReadCellPayload(
+                bytes, cellOffset, payloadLenV.value, pageSize, usableSize);
 
             try {
                 results.push(sqliteDecodeRecord(payload));
@@ -166,11 +213,11 @@ function sqliteScanBTree(bytes, pageNum, pageSize) {
             const cellOffset = pageOffset + cellPtr;
             // Cell: 4-byte left child page number + varint key (key not needed)
             const childPage = sqliteReadU32(bytes, cellOffset);
-            results.push(...sqliteScanBTree(bytes, childPage, pageSize));
+            results.push(...sqliteScanBTree(bytes, childPage, pageSize, usableSize));
         }
 
         // Process the rightmost child
-        results.push(...sqliteScanBTree(bytes, rightChildPage, pageSize));
+        results.push(...sqliteScanBTree(bytes, rightChildPage, pageSize, usableSize));
     }
 
     return results;
@@ -199,9 +246,12 @@ function readSQLiteTable(buffer, tableName) {
     let pageSize = sqliteReadU16(bytes, 16);
     if (pageSize === 1) pageSize = 65536;
 
+    // Reserved space at the end of each page (byte 20)
+    const usableSize = pageSize - bytes[20];
+
     // sqlite_master is always at page 1.
     // Schema: type TEXT, name TEXT, tbl_name TEXT, rootpage INTEGER, sql TEXT
-    const masterRows = sqliteScanBTree(bytes, 1, pageSize);
+    const masterRows = sqliteScanBTree(bytes, 1, pageSize, usableSize);
 
     let rootPage = null;
     for (const row of masterRows) {
@@ -213,7 +263,7 @@ function readSQLiteTable(buffer, tableName) {
 
     if (!rootPage) return [];
 
-    return sqliteScanBTree(bytes, rootPage, pageSize);
+    return sqliteScanBTree(bytes, rootPage, pageSize, usableSize);
 }
 
 /**
