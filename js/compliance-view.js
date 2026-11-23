@@ -23,18 +23,33 @@ const FRAMEWORK_META = {
 
 const FW_REF_DESCRIPTIONS = {
     'CIS 3.10':    { title: 'Encrypt Sensitive Data in Transit',            body: 'Encrypt sensitive data in transit using a secure protocol such as Transport Layer Security (TLS). Do not use older versions of TLS.' },
+    'CIS 4.4':     { title: 'Implement and Manage a Firewall on Servers',     body: 'Implement and manage a firewall on servers, where supported, such as a virtual firewall, operating system firewall or third-party firewall agent.' },
     'CIS 4.6':     { title: 'Securely Manage Enterprise Assets and Software', body: 'Securely manage enterprise assets and software. Use encrypted protocols such as SSH rather than Telnet for remote management. Disable unnecessary services.' },
+    'CIS 4.7':     { title: 'Manage Default Accounts',                        body: 'Manage default accounts on enterprise assets and software, such as root, administrator and other pre-configured vendor accounts. Disable default accounts or make them unusable.' },
     'CIS 4.8':     { title: 'Uninstall or Disable Unnecessary Services',    body: 'Uninstall or disable unnecessary services on enterprise assets and software, such as unused file sharing services, web application modules, or remote management services not required for business purposes.' },
-    'CIS 4.10':    { title: 'Configure Automatic Session Locking on Enterprise Assets', body: 'Configure automatic session locking on enterprise assets after a defined period of inactivity. Ensure account lockout policies are configured to block access after failed authentication attempts.' },
+    'CIS 4.10':    { title: 'Enforce Automatic Device Lockout',               body: 'Enforce automatic lockout following a predetermined threshold of failed authentication attempts, so that password guessing is slowed down or stopped.' },
+    'CIS 5.2':     { title: 'Use Unique Passwords',                           body: 'Use unique passwords for all enterprise assets. Best practice implementation includes, at a minimum, an 8-character password for accounts using MFA and a 14-character password for accounts not using MFA.' },
+    'CIS 5.4':     { title: 'Restrict Administrator Privileges to Dedicated Administrator Accounts', body: 'Restrict administrator privileges to dedicated administrator accounts. Conduct general computing activities from the user\'s primary, non-privileged account.' },
+    'CIS 11.2':    { title: 'Perform Automated Backups',                      body: 'Perform automated backups of in-scope enterprise assets. Run backups weekly, or more frequently, based on the sensitivity of the data.' },
+    'CIS 7.3':     { title: 'Perform Automated Operating System Patch Management', body: 'Perform operating system updates on enterprise assets through automated patch management on a monthly, or more frequent, basis.' },
     'CIS 9.2':     { title: 'Ensure Only Approved Ports and Services Are Listening', body: 'Ensure that only network ports, protocols, and services with validated business needs are listening on each enterprise asset.' },
     'CIS 9.4':     { title: 'Block Unnecessary File Sharing Services',       body: 'Block unnecessary file sharing services and protocols including SMBv1. Restrict access to file shares to authorised users only, using encrypted protocols.' },
     'CIS 9.5':     { title: 'Implement Application Layer Filtering',         body: 'Implement TLS on all services accessible from the internet. Ensure that HTTP traffic is redirected to HTTPS and that HSTS is configured.' },
-    'CIS 12.2':    { title: 'Establish and Maintain a Secure Network Architecture', body: 'Establish and maintain a secure network architecture. Controls must address segmentation, least privilege, and availability. Review at least annually.' },
+    'NIST AC-2':   { title: 'Account Management',                             body: 'Define allowed account types, assign account managers, require approval for new accounts, and disable accounts that are no longer required, including shared and guest accounts.' },
+    'NIST AC-6':   { title: 'Least Privilege',                                body: 'Allow only the authorized accesses for users and processes that are necessary to accomplish assigned tasks.' },
     'NIST AC-7':   { title: 'Unsuccessful Logon Attempts',                   body: 'Enforce a limit of consecutive invalid logon attempts. Automatically lock the account or delay further attempts when the limit is exceeded.' },
+    'NIST CP-9':   { title: 'System Backup',                                  body: 'Conduct backups of system-level information, including system configuration, at a defined frequency and protect the confidentiality, integrity and availability of the backups.' },
+    'NIST IA-5':   { title: 'Authenticator Management',                       body: 'Manage system authenticators such as passwords: establish minimum strength requirements, prohibit commonly used or compromised passwords, and protect authenticators from disclosure.' },
+    'NIST SI-2':   { title: 'Flaw Remediation',                               body: 'Identify, report and correct system flaws; install security-relevant software and firmware updates within a defined time period of their release.' },
     'NIST CM-7':   { title: 'Least Functionality',                           body: 'Configure the system to provide only essential capabilities. Prohibit or restrict functions, ports, protocols, and services not required.' },
     'NIST IA-3':   { title: 'Device Identification and Authentication',       body: 'Uniquely identify and authenticate devices before establishing connections. Only use authentication protocols and algorithms that meet current security standards.' },
     'NIST SC-7':   { title: 'Boundary Protection',                           body: 'Monitor and control communications at the external boundary. Connect to external networks only through managed interfaces consisting of boundary protection devices.' },
     'NIST SC-8':   { title: 'Transmission Confidentiality and Integrity',    body: 'Implement cryptographic mechanisms to prevent unauthorized disclosure of information and detect changes during transmission.' },
+    'ISO A.5.18':  { title: 'Access Rights',                                  body: 'Access rights to information and other associated assets shall be provisioned, reviewed, modified and removed in accordance with the topic-specific policy on access control.' },
+    'ISO A.5.17':  { title: 'Authentication Information',                    body: 'Allocation and management of authentication information shall be controlled by a management process, including advising personnel on the appropriate handling of authentication information.' },
+    'ISO A.8.13':  { title: 'Information Backup',                             body: 'Backup copies of information, software and systems shall be maintained and regularly tested in accordance with the agreed topic-specific policy on backup.' },
+    'ISO A.8.8':   { title: 'Management of Technical Vulnerabilities',        body: 'Information about technical vulnerabilities of information systems in use shall be obtained, the exposure to such vulnerabilities evaluated and appropriate measures taken.' },
+    'ISO A.8.2':   { title: 'Privileged Access Rights',                       body: 'The allocation and use of privileged access rights shall be restricted and managed.' },
     'ISO A.8.3':   { title: 'Information Access Restriction',                body: 'Access to information and application system functions shall be restricted in accordance with the access control policy. Anonymous or unauthenticated access shall be avoided.' },
     'ISO A.8.5':   { title: 'Secure Authentication',                         body: 'Secure authentication technologies and procedures shall be implemented based on information access restrictions and the access control policy, including account lockout for failed attempts.' },
     'ISO A.8.20':  { title: 'Networks Security',                             body: 'Networks and network devices shall be secured, managed and controlled to protect information in systems and applications. Unnecessary services and access paths shall be disabled.' },
@@ -43,7 +58,9 @@ const FW_REF_DESCRIPTIONS = {
     'NIS2 Art.21(h)': { title: 'Cryptography and Encryption',               body: 'Entities must implement policies regarding the use of cryptography and, where appropriate, encryption to protect information in transit (NIS2 Art. 21 para. 2 lit. h).' },
     'PCI Req.2.2.7': { title: 'All Non-Console Administrative Access Encrypted', body: 'All non-console administrative access must use strong cryptography. Telnet and other insecure protocols must be removed from all systems (PCI DSS v4.0, Requirement 2.2.7).' },
     'PCI Req.4.2.1': { title: 'Strong Cryptography for Transmitting PAN',   body: 'Strong cryptography is in use during transmission of PAN over open, public networks. Only trusted keys/certificates are accepted (PCI DSS v4.0, Requirement 4.2.1).' },
+    'PCI Req.6.3.3': { title: 'Security Patches Are Installed',             body: 'All system components are protected from known vulnerabilities by installing applicable security patches and updates; critical patches within one month of release.' },
     'PCI Req.8.3.4': { title: 'Account Lockout',                            body: 'Invalid authentication attempts are limited. If a password-based authentication method is used, account lockout must be implemented for a defined number of failed attempts (PCI DSS v4.0, Requirement 8.3.4).' },
+    'PCI Req.8.3.6': { title: 'Password Length and Complexity',             body: 'If passwords are used as authentication factors, they must have a minimum length of 12 characters and contain both numeric and alphabetic characters.' },
     'PCI Req.12.3.3': { title: 'Cryptographic Cipher Suite Review',         body: 'All cryptographic cipher suites and protocols in use are documented and reviewed at least once every 12 months. Insecure protocols and cipher suites must be removed (PCI DSS v4.0, Requirement 12.3.3).' },
 };
 
@@ -151,8 +168,9 @@ function renderComplianceView(findings) {
     _cachedFindings = findings;
 
     const failFindings = findings.filter(f => f.status === 'fail');
-    const passFindings = findings.filter(f => f.status === 'pass');
-    const score        = calculateSecurityScore(findings);
+    const passFindings    = findings.filter(f => f.status === 'pass');
+    const unknownFindings = findings.filter(f => f.status === 'unknown');
+    const score           = calculateSecurityScore(findings);
 
     let visible = [...failFindings];
     if (complianceState.frameworkFilter) {
@@ -169,7 +187,8 @@ function renderComplianceView(findings) {
         ${renderScoreHeader(findings, failFindings, score)}
         ${renderStatusBar(failFindings, visible)}
         <div class="findings-scroll-area">
-            ${renderFindingsByCategory(visible)}
+            ${renderFindingsByCategory(visible, unknownFindings.length)}
+            ${renderUnknownSection(unknownFindings)}
             ${renderPassedSection(passFindings)}
             ${renderExcludedChecksSection()}
             ${renderDisclaimer()}
@@ -211,8 +230,8 @@ function renderScoreHeader(allFindings, failFindings, score) {
     for (const f of allFindings) {
         for (const fw of f.frameworks) {
             if (!frameworkStats[fw.code]) frameworkStats[fw.code] = { fail: 0, pass: 0 };
-            if (f.status === 'fail') frameworkStats[fw.code].fail++;
-            else                     frameworkStats[fw.code].pass++;
+            if (f.status === 'fail')      frameworkStats[fw.code].fail++;
+            else if (f.status === 'pass') frameworkStats[fw.code].pass++;
         }
     }
 
@@ -220,15 +239,17 @@ function renderScoreHeader(allFindings, failFindings, score) {
         const stats    = frameworkStats[code] || { fail: 0, pass: 0 };
         const isActive = complianceState.frameworkFilter === code;
         const hasIssues = stats.fail > 0;
+        // A framework whose checks could all not be evaluated is not "clean"
+        const evaluated = stats.fail + stats.pass > 0;
         return `
-            <button class="fw-chip ${isActive ? 'fw-chip--active' : ''} ${hasIssues ? 'fw-chip--issues' : 'fw-chip--clean'}"
+            <button class="fw-chip ${isActive ? 'fw-chip--active' : ''} ${hasIssues ? 'fw-chip--issues' : evaluated ? 'fw-chip--clean' : ''}"
                     style="--chip-color: ${meta.color}"
                     onclick="setComplianceFrameworkFilter('${code}')"
                     title="${meta.label}">
                 ${code}
                 ${hasIssues
                     ? `<span class="fw-chip-count">${stats.fail}</span>`
-                    : '<span class="fw-chip-clean">✓</span>'}
+                    : evaluated ? '<span class="fw-chip-clean">✓</span>' : ''}
             </button>
         `;
     }).join('');
@@ -298,13 +319,13 @@ function renderStatusBar(allFail, visible) {
 
 // ── Findings grouped by category ──────────────────────────────────────────────
 
-function renderFindingsByCategory(findings) {
+function renderFindingsByCategory(findings, unknownCount = 0) {
     if (findings.length === 0) {
         return `
             <div class="findings-empty-state">
                 <div class="findings-empty-icon">✓</div>
                 <div class="findings-empty-title">${t('noFindingsTitle')}</div>
-                <div class="findings-empty-sub">${t('noFindingsSub')}</div>
+                <div class="findings-empty-sub">${unknownCount ? t('noFindingsSubUnknown', unknownCount) : t('noFindingsSub')}</div>
             </div>
         `;
     }
@@ -416,6 +437,43 @@ function renderPassedSection(passFindings) {
             <div class="passed-section-header">
                 ${t('passedChecks')} <span class="passed-count">${passFindings.length}</span>
             </div>
+            <div class="passed-list">${cards}</div>
+        </div>
+    `;
+}
+
+// ── Checks that could not be evaluated ───────────────────────────────────────
+
+function renderUnknownSection(unknownFindings) {
+    if (unknownFindings.length === 0) return '';
+
+    const cards = unknownFindings.map(f => `
+        <div class="finding-card finding-card--unknown" style="--stripe-color: #94a3b8">
+            <div class="finding-stripe"></div>
+            <div class="finding-card-content">
+                <div class="finding-header finding-header--pass">
+                    <div class="finding-header-main">
+                        <span class="severity-pill severity-pill--unknown">${t('severityUnknown')}</span>
+                        <span class="finding-category">${escapeHtml(f.category)}</span>
+                    </div>
+                    <div class="finding-title finding-title--pass">${escapeHtml(f.title)}</div>
+                </div>
+                ${f.affectedItems?.length ? `
+                <div class="unknown-detail">
+                    ${f.description ? `<p>${escapeHtml(f.description)}</p>` : ''}
+                    <ul>${f.affectedItems.map(i => `<li>${escapeHtml(i)}</li>`).join('')}</ul>
+                    ${f.remediation ? `<p>${escapeHtml(f.remediation)}</p>` : ''}
+                </div>` : ''}
+            </div>
+        </div>
+    `).join('');
+
+    return `
+        <div class="passed-section unknown-section">
+            <div class="passed-section-header unknown-section-header">
+                ${t('unknownChecks')} <span class="passed-count unknown-count">${unknownFindings.length}</span>
+            </div>
+            <p class="unknown-section-hint">${t('unknownDesc')}</p>
             <div class="passed-list">${cards}</div>
         </div>
     `;

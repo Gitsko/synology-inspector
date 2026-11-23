@@ -8,12 +8,45 @@
  *   Storage:  Fast Clone (btrfs only)
  *   Updates:  Notify-only setting
  *   Scheduler: Recycle Bin cleanup task
+ *   Network:  Default ports for DSM and SSH
  */
 
 function checkBestPractices(config, _tlsProfile, parseResult) {
     const findings       = [];
     const schedulerTasks = parseResult?.schedulerTasks || [];
     const hasBtrfs       = parseResult?.hasBtrfs       ?? false;
+
+    // ── Network: default ports ─────────────────────────────────────────────────
+    // A changed port does not stop targeted attacks, but cuts noise from scanners.
+    const defaultPorts = [];
+    if (config.get('w3_admin_port') === '5000')        defaultPorts.push('DSM HTTP 5000');
+    if (config.get('w3_secure_admin_port') === '5001') defaultPorts.push('DSM HTTPS 5001');
+    if (config.get('Terminal_isEnableSSH') === '1' && config.get('Terminal_SSHPort') === '22') defaultPorts.push('SSH 22');
+    if (defaultPorts.length) {
+        findings.push({
+            id:          'bp-default-ports',
+            title:       t('bpCheckPortsFailTitle'),
+            description: t('bpCheckPortsDesc'),
+            severity:    'low',
+            status:      'fail',
+            category:    t('catBPNetwork'),
+            frameworks:  [],
+            affectedItems: defaultPorts,
+            remediation: t('bpCheckPortsRemediation'),
+        });
+    } else if (config.has('w3_admin_port') && config.has('w3_secure_admin_port')) {
+        findings.push({
+            id:          'bp-custom-ports',
+            title:       t('bpCheckPortsPassTitle'),
+            description: '',
+            severity:    'info',
+            status:      'pass',
+            category:    t('catBPNetwork'),
+            frameworks:  [],
+            affectedItems: [],
+            remediation: '',
+        });
+    }
 
     // ── SMB: Transfer Log ─────────────────────────────────────────────────────
     // Transfer log should be OFF (0) for performance; ON (1) = FAIL
@@ -211,39 +244,30 @@ function checkBestPractices(config, _tlsProfile, parseResult) {
         }
     }
 
-    // ── DSM update setting: notify only ───────────────────────────────────────
+    // ── DSM update setting: no fully automatic updates ────────────────────────
+    // 'notify' and 'hotfix-security' (security fixes only) both keep feature
+    // updates under manual control. The value DSM stores for "install all
+    // updates" is not verified, so other values produce no finding here; the
+    // security check reports them as unknown.
     let updateType = null;
     try {
         const raw = config.get('UPDATE_setting_v4');
-        if (raw) updateType = JSON.parse(raw)?.autoupdate_type || null;
+        const type = raw ? JSON.parse(raw)?.autoupdate_type : undefined;
+        if (typeof type === 'string' && type !== '') updateType = type;
     } catch (_) {}
 
-    if (updateType !== null) {
-        if (updateType !== 'notify') {
-            findings.push({
-                id:          'bp-update-auto',
-                title:       t('bpCheckUpdateNotifyFailTitle'),
-                description: t('bpCheckUpdateNotifyDesc'),
-                severity:    'medium',
-                status:      'fail',
-                category:    t('catBPUpdates'),
-                frameworks:  [],
-                affectedItems: [],
-                remediation: t('bpCheckUpdateNotifyRemediation'),
-            });
-        } else {
-            findings.push({
-                id:          'bp-update-notify-ok',
-                title:       t('bpCheckUpdateNotifyPassTitle'),
-                description: '',
-                severity:    'info',
-                status:      'pass',
-                category:    t('catBPUpdates'),
-                frameworks:  [],
-                affectedItems: [],
-                remediation: '',
-            });
-        }
+    if (updateType === 'notify' || updateType === 'hotfix-security') {
+        findings.push({
+            id:          'bp-update-notify-ok',
+            title:       t('bpCheckUpdateNotifyPassTitle'),
+            description: '',
+            severity:    'info',
+            status:      'pass',
+            category:    t('catBPUpdates'),
+            frameworks:  [],
+            affectedItems: [],
+            remediation: '',
+        });
     }
 
     // ── Recycle Bin cleanup task ──────────────────────────────────────────────

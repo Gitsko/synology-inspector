@@ -62,10 +62,14 @@ DSM 7.0 and later. DSM 6.x is not supported.
 | Remote Access | SSH enabled | Medium |
 | Remote Access | Telnet enabled | Critical |
 | Network Security | DoS protection not enabled on all interfaces | Medium |
+| Network Security | Firewall disabled | Medium |
 | Protocols | SMBv1 allowed | Critical |
 | Protocols | NTLMv1 authentication enabled | High |
 | Protocols | FTP anonymous access enabled | High |
 | Protocols | FTP without TLS | Medium |
+| Protocols | TLS 1.0/1.1 allowed on web services (DSM, QuickConnect, reverse proxy) | Medium |
+| Protocols | SMB signing not enforced | Medium |
+| Protocols | Optional services enabled (rsync, NFS, SNMP) | Low |
 | Authentication | Automatic account blocking not configured | Medium |
 | Authentication | HTTP does not redirect to HTTPS | Medium |
 | Authentication | HSTS not enabled | Low |
@@ -77,8 +81,15 @@ DSM 7.0 and later. DSM 6.x is not supported.
 | User Accounts | Minimum password length below 12 | Medium |
 | User Accounts | Special characters not required | Low |
 | User Accounts | Common password check disabled | Low |
+| User Accounts | Guest account active (High if shared folders grant guest access) | Medium |
+| User Accounts | More than two active administrator accounts | Low |
 | Maintenance | Automatic configuration backup not configured | Medium |
-| Maintenance | SMB signing disabled | Medium |
+| Maintenance | Security updates not installed automatically | Medium |
+| Maintenance | DSM build affected by a critical Synology security advisory | Critical |
+
+If the backup does not contain the data a check needs, the check is listed as "could not evaluate" instead of passed. Such checks do not affect the score.
+
+The advisory check compares the DSM build number with the fixed releases listed in `DSM_ADVISORIES` (`js/checks/check-advisories.js`). The backup does not record the installed update (the `-2` in `7.4.1-90080-2`), so an advisory fixed by an update of the device's own build is reported as "could not evaluate". When Synology publishes a new critical DSM advisory, add it to that table.
 
 ## Best Practice Checks
 
@@ -91,8 +102,19 @@ DSM 7.0 and later. DSM 6.x is not supported.
 | SMB Performance | Cross-share symlinks enabled |
 | File Services & Storage | AFP service enabled (deprecated) |
 | File Services & Storage | File Fast Clone disabled (btrfs only) |
-| Update Management | DSM updates not set to notify-only |
+| Update Management | DSM installs all updates automatically (security-only or notify-only is fine) |
 | Task Scheduler | No recycle bin cleanup task configured |
+| Network | DSM or SSH on a default port (5000, 5001, 22) |
+
+---
+
+## Development
+
+The checks run in Node.js for testing, without a build step or dependencies (Node.js 22.13 or newer):
+
+```sh
+node --test tests/*.test.js
+```
 
 ---
 

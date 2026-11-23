@@ -6,9 +6,8 @@
  * as arrays of column values.
  *
  * Supported page types: leaf table (0x0D), interior table (0x05).
- * Overflow pages are NOT followed — values larger than the inline threshold
- * will be truncated. All security-relevant keys in the Synology .dss backup
- * fit within the inline payload, so this is safe for our use case.
+ * Overflow pages are followed, so values larger than the inline threshold
+ * (e.g. NOTIFY_filter, DDNS_provider) are read completely.
  *
  * SQLite 3 format reference: https://www.sqlite.org/fileformat.html
  */
@@ -44,6 +43,64 @@ function sqliteReadVarint(bytes, offset) {
     return { value, length };
 }
 
+/** Byte length of the integer serial types 1–6. */
+const SQLITE_INT_SIZES = [0, 1, 2, 3, 4, 6, 8];
+
+/**
+ * Read a big-endian two's complement integer of `len` bytes.
+ * 8-byte values outside the safe integer range lose precision.
+ */
+function sqliteReadSignedInt(bytes, offset, len) {
+    let v = 0n;
+    for (let i = 0; i < len; i++) v = (v << 8n) | BigInt(bytes[offset + i]);
+    const bits = BigInt(len * 8);
+    if (v & (1n << (bits - 1n))) v -= 1n << bits;
+    return Number(v);
+}
+
+/**
+ * Assemble the full payload of a table b-tree cell, following overflow pages.
+ * See "Cell Payload Overflow Pages" in the SQLite file format reference.
+ *
+ * @param {Uint8Array} bytes        Full database bytes
+ * @param {number}     offset       Offset of the first payload byte
+ * @param {number}     payloadLen   Total payload length (P)
+ * @param {number}     pageSize
+ * @param {number}     usableSize   Page size minus reserved bytes (U)
+ * @returns {Uint8Array}
+ */
+function sqliteReadCellPayload(bytes, offset, payloadLen, pageSize, usableSize) {
+    if (payloadLen > bytes.length) throw new RangeError('payload length exceeds database size');
+    const maxLocal = usableSize - 35;
+    if (payloadLen <= maxLocal) {
+        return bytes.slice(offset, offset + payloadLen);
+    }
+
+    const minLocal = Math.floor((usableSize - 12) * 32 / 255) - 23;
+    const k        = minLocal + ((payloadLen - minLocal) % (usableSize - 4));
+    const localLen = k <= maxLocal ? k : minLocal;
+
+    const payload = new Uint8Array(payloadLen);
+    payload.set(bytes.subarray(offset, offset + localLen), 0);
+
+    let written  = localLen;
+    let nextPage = sqliteReadU32(bytes, offset + localLen);
+    const visited = new Set();
+    while (written < payloadLen && nextPage !== 0 && !visited.has(nextPage)) {
+        visited.add(nextPage);
+        const pageOffset = (nextPage - 1) * pageSize;
+        if (pageOffset + 4 > bytes.length) break;
+        const wanted   = Math.min(usableSize - 4, payloadLen - written);
+        const chunk    = bytes.subarray(pageOffset + 4, pageOffset + 4 + wanted);
+        payload.set(chunk, written);
+        written  += chunk.length;
+        if (chunk.length < wanted) break;   // truncated file
+        nextPage  = sqliteReadU32(bytes, pageOffset);
+    }
+
+    return written === payloadLen ? payload : payload.slice(0, written);
+}
+
 // ── Record decoder ────────────────────────────────────────────────────────────
 
 /**
@@ -74,26 +131,22 @@ function sqliteDecodeRecord(payload) {
 
         if (st === 0) {
             values.push(null);
-        } else if (st === 1) {
-            values.push(payload[pos]); pos += 1;
-        } else if (st === 2) {
-            values.push((payload[pos] << 8) | payload[pos + 1]); pos += 2;
-        } else if (st === 3) {
-            values.push((payload[pos] << 16) | (payload[pos + 1] << 8) | payload[pos + 2]); pos += 3;
-        } else if (st === 4) {
-            values.push(sqliteReadU32(payload, pos)); pos += 4;
-        } else if (st === 5) {
-            let v = 0;
-            for (let i = 0; i < 6; i++) v = v * 256 + payload[pos + i];
-            values.push(v); pos += 6;
-        } else if (st === 6 || st === 7) {
-            values.push(null); pos += 8; // 8-byte int / float — not needed
+        } else if (st >= 1 && st <= 6) {
+            // Big-endian two's complement integers of 1, 2, 3, 4, 6 or 8 bytes
+            const len = SQLITE_INT_SIZES[st];
+            if (pos + len > payload.length) { values.push(null); pos = payload.length; continue; }
+            values.push(sqliteReadSignedInt(payload, pos, len)); pos += len;
+        } else if (st === 7) {
+            if (pos + 8 > payload.length) { values.push(null); pos = payload.length; continue; }
+            const view = new DataView(payload.buffer, payload.byteOffset + pos, 8);
+            values.push(view.getFloat64(0, false)); pos += 8;
         } else if (st === 8) {
             values.push(0);
         } else if (st === 9) {
             values.push(1);
         } else if (st >= 12 && st % 2 === 0) {
             const len = (st - 12) / 2;
+            if (pos + len > payload.length) { values.push(null); pos = payload.length; continue; }
             values.push(payload.slice(pos, pos + len)); pos += len;
         } else if (st >= 13 && st % 2 === 1) {
             const len = (st - 13) / 2;
@@ -117,9 +170,10 @@ function sqliteDecodeRecord(payload) {
  * @param {Uint8Array} bytes      Full database bytes
  * @param {number}     pageNum    1-based page number to scan
  * @param {number}     pageSize   Database page size in bytes
+ * @param {number}     usableSize Page size minus reserved bytes per page
  * @returns {Array[]}
  */
-function sqliteScanBTree(bytes, pageNum, pageSize) {
+function sqliteScanBTree(bytes, pageNum, pageSize, usableSize) {
     const results = [];
     const pageOffset = (pageNum - 1) * pageSize;
     const isPage1   = (pageNum === 1);
@@ -145,11 +199,9 @@ function sqliteScanBTree(bytes, pageNum, pageSize) {
             const rowIdV = sqliteReadVarint(bytes, cellOffset);
             cellOffset += rowIdV.length;
 
-            // Inline payload (may be truncated if cell has overflow pages)
-            const inlineLen = Math.min(payloadLenV.value, bytes.length - cellOffset);
-            const payload   = bytes.slice(cellOffset, cellOffset + inlineLen);
-
             try {
+                const payload = sqliteReadCellPayload(
+                    bytes, cellOffset, payloadLenV.value, pageSize, usableSize);
                 results.push(sqliteDecodeRecord(payload));
             } catch (_) {
                 // Skip malformed records rather than aborting the scan
@@ -166,11 +218,12 @@ function sqliteScanBTree(bytes, pageNum, pageSize) {
             const cellOffset = pageOffset + cellPtr;
             // Cell: 4-byte left child page number + varint key (key not needed)
             const childPage = sqliteReadU32(bytes, cellOffset);
-            results.push(...sqliteScanBTree(bytes, childPage, pageSize));
+            for (const row of sqliteScanBTree(bytes, childPage, pageSize, usableSize)) results.push(row);
         }
 
-        // Process the rightmost child
-        results.push(...sqliteScanBTree(bytes, rightChildPage, pageSize));
+        // Process the rightmost child (loop instead of spread: large subtrees
+        // would exceed the engine's argument limit)
+        for (const row of sqliteScanBTree(bytes, rightChildPage, pageSize, usableSize)) results.push(row);
     }
 
     return results;
@@ -199,9 +252,12 @@ function readSQLiteTable(buffer, tableName) {
     let pageSize = sqliteReadU16(bytes, 16);
     if (pageSize === 1) pageSize = 65536;
 
+    // Reserved space at the end of each page (byte 20)
+    const usableSize = pageSize - bytes[20];
+
     // sqlite_master is always at page 1.
     // Schema: type TEXT, name TEXT, tbl_name TEXT, rootpage INTEGER, sql TEXT
-    const masterRows = sqliteScanBTree(bytes, 1, pageSize);
+    const masterRows = sqliteScanBTree(bytes, 1, pageSize, usableSize);
 
     let rootPage = null;
     for (const row of masterRows) {
@@ -213,7 +269,7 @@ function readSQLiteTable(buffer, tableName) {
 
     if (!rootPage) return [];
 
-    return sqliteScanBTree(bytes, rootPage, pageSize);
+    return sqliteScanBTree(bytes, rootPage, pageSize, usableSize);
 }
 
 /**
@@ -239,6 +295,7 @@ function buildSynoConfigMap(buffer) {
  * Column indices are fixed by the Synology DSM .dss schema:
  *   confbkp_user_tb:             name(0), uid(1), expire(9)
  *   confbkp_group_member_list_tb: group_name(0), member_name(1)
+ *   confbkp_share_privilege_id_tb: share_name(0), user_or_group(1), name(3), privilege(4)
  *   confbkp_scheduler_table:     id(0), json_config(1)
  *   confbkp_auto_config_backup_table: key(0), value(1)
  *   confbkp_volume_tb:           vid(0), location(1), fstype(2), mount_point(3)
@@ -247,11 +304,11 @@ function buildSynoConfigMap(buffer) {
  * are themselves JSON strings (e.g. '"SYNO.SDS.TaskScheduler.Recycle"\n').
  *
  * @param {ArrayBuffer|Uint8Array} buffer  Raw SQLite 3 database bytes
- * @returns {{ users, adminMembers, schedulerTasks, autoBackupConfigured, hasBtrfs }}
+ * @returns {{ users, adminMembers, sharePrivileges, schedulerTasks, autoBackupConfigured: boolean|null, hasBtrfs }}
  */
 function buildSynoExtras(buffer) {
     // ── Users ────────────────────────────────────────────────────────────────────
-    // expire: -1 = active (never expires), 1 = disabled/expired
+    // expire: -1 = never expires, 1 = deactivated, >1 = expiry day (see isAccountActive)
     const userRows = readSQLiteTable(buffer, 'confbkp_user_tb');
     const users = userRows
         .filter(r => typeof r[0] === 'string' && r[0].length > 0)
@@ -262,6 +319,12 @@ function buildSynoExtras(buffer) {
     const adminMembers = groupRows
         .filter(r => r[0] === 'administrators' && typeof r[1] === 'string' && r[1].length > 0)
         .map(r => r[1]);
+
+    // ── Explicit share permissions ───────────────────────────────────────────────
+    // privilege: 'RW', 'RO' or 'Deny'; user_or_group: 'user' or 'group'
+    const sharePrivileges = readSQLiteTable(buffer, 'confbkp_share_privilege_id_tb')
+        .filter(r => typeof r[0] === 'string' && typeof r[3] === 'string')
+        .map(r => ({ share: r[0], type: r[1], name: r[3], privilege: r[4] }));
 
     // ── Scheduler tasks ──────────────────────────────────────────────────────────
     const schedRows      = readSQLiteTable(buffer, 'confbkp_scheduler_table');
@@ -283,15 +346,17 @@ function buildSynoExtras(buffer) {
     }
 
     // ── Auto config backup ───────────────────────────────────────────────────────
-    // not_set_before = 'true' means backup has NOT been configured yet
+    // not_set_before = 'true' means backup has NOT been configured yet.
+    // null = table or key missing, the state cannot be determined.
     const backupRows = readSQLiteTable(buffer, 'confbkp_auto_config_backup_table');
     const backupMap  = new Map(backupRows.map(r => [r[0], r[1]]));
-    const autoBackupConfigured = backupMap.get('not_set_before') !== 'true';
+    const notSetBefore = backupMap.get('not_set_before');
+    const autoBackupConfigured = notSetBefore === 'false' ? true : notSetBefore === 'true' ? false : null;
 
     // ── btrfs volumes ────────────────────────────────────────────────────────────
     // fstype = 3 → btrfs
     const volRows  = readSQLiteTable(buffer, 'confbkp_volume_tb');
     const hasBtrfs = volRows.some(r => Number(r[2]) === 3);
 
-    return { users, adminMembers, schedulerTasks, autoBackupConfigured, hasBtrfs };
+    return { users, adminMembers, sharePrivileges, schedulerTasks, autoBackupConfigured, hasBtrfs };
 }
