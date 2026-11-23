@@ -21,11 +21,13 @@
  * {
  *   config:               Map<string, string>   key-value pairs from SQLite
  *   tlsProfile:           Object | null         parsed tls_profile/datastore.json
+ *   tlsConfigs:           Array                 nginx TLS snippets { name, text } from tls_profile/config/*.conf
  *   info:                 Object                DSM version, model, etc.
  *   fileName:             string
  *   fileSize:             number
  *   users:                Array                 local user accounts { name, uid, expire }
  *   adminMembers:         string[]              members of the administrators group
+ *   sharePrivileges:      Array                 explicit share permissions { share, type, name, privilege }
  *   schedulerTasks:       Array                 scheduler tasks { app, state, name }
  *   autoBackupConfigured: boolean | null        true if auto config backup is configured,
  *                                               null if the backup does not contain the state
@@ -117,6 +119,7 @@ function parseDSSFile(file) {
                 const dbEntry      = tarEntries.find(e => e.name.endsWith('_Syno_ConfBkp.db'));
                 const infoEntry    = tarEntries.find(e => e.name.endsWith('config_info'));
                 const tlsJsonEntry = tarEntries.find(e => e.name.endsWith('tls_profile/datastore.json'));
+                const tlsConfigEntries = tarEntries.filter(e => /tls_profile\/config\/[^/]+\.conf$/.test(e.name));
 
                 if (!dbEntry) {
                     return reject(new Error(t('errNoDb')));
@@ -138,14 +141,21 @@ function parseDSSFile(file) {
                     } catch (_) { /* not critical */ }
                 }
 
+                const tlsConfigs = tlsConfigEntries.map(e => ({
+                    name: e.name,
+                    text: new TextDecoder('utf-8').decode(e.data),
+                }));
+
                 resolve({
                     config,
                     tlsProfile,
+                    tlsConfigs,
                     info,
                     fileName: file.name,
                     fileSize: file.size,
                     users:                extras.users,
                     adminMembers:         extras.adminMembers,
+                    sharePrivileges:      extras.sharePrivileges,
                     schedulerTasks:       extras.schedulerTasks,
                     autoBackupConfigured: extras.autoBackupConfigured,
                     hasBtrfs:             extras.hasBtrfs,

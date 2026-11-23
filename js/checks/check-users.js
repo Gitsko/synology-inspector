@@ -7,6 +7,8 @@
  *   3. Password minimum length below 12            (medium)
  *   4. Password special characters not required    (low)
  *   5. Common password check disabled              (low)
+ *   6. Guest account active                        (medium, high with share access)
+ *   7. More than two active administrators         (low)
  */
 
 function checkUsers(config, _tlsProfile, parseResult) {
@@ -141,6 +143,81 @@ function checkUsers(config, _tlsProfile, parseResult) {
                 status:      'pass',
                 category:    t('catUsers'),
                 frameworks:  [fwRef('ISO', 'A.5.17')],
+                affectedItems: [],
+                remediation: '',
+            });
+        }
+    }
+
+    // ── Guest account ─────────────────────────────────────────────────────────
+    const guestFw = [fwRef('CIS', '4.7'), fwRef('NIST', 'AC-2'), fwRef('ISO', 'A.5.18')];
+    if (users.length === 0) {
+        findings.push(unknownFinding('syn-guest-unknown', t('checkNameGuest'), t('catUsers'), guestFw));
+    } else {
+        const guest = users.find(u => u.name === 'guest');
+        if (guest && isAccountActive(guest)) {
+            const guestShares = (parseResult?.sharePrivileges || [])
+                .filter(p => p.type === 'user' && p.name === 'guest' && (p.privilege === 'RW' || p.privilege === 'RO'))
+                .map(p => `${p.share} (${p.privilege})`);
+            findings.push({
+                id:          'syn-guest-active',
+                title:       t('checkGuestFailTitle'),
+                description: t('checkGuestDesc'),
+                severity:    guestShares.length ? 'high' : 'medium',
+                status:      'fail',
+                category:    t('catUsers'),
+                frameworks:  guestFw,
+                affectedItems: guestShares,
+                remediation: t('checkGuestRemediation'),
+            });
+        } else {
+            findings.push({
+                id:          'syn-guest-disabled',
+                title:       t('checkGuestPassTitle'),
+                description: '',
+                severity:    'info',
+                status:      'pass',
+                category:    t('catUsers'),
+                frameworks:  guestFw,
+                affectedItems: [],
+                remediation: '',
+            });
+        }
+    }
+
+    // ── Number of active administrators ───────────────────────────────────────
+    // Members without a local account (e.g. package service users) are skipped.
+    const MAX_ADMINS   = 2;
+    const adminFw      = [fwRef('CIS', '5.4'), fwRef('NIST', 'AC-6'), fwRef('ISO', 'A.8.2')];
+    const adminMembers = parseResult?.adminMembers || [];
+    if (users.length === 0 || adminMembers.length === 0) {
+        findings.push(unknownFinding('syn-admins-unknown', t('checkNameAdmins'), t('catUsers'), adminFw));
+    } else {
+        const activeAdmins = adminMembers.filter(name => {
+            const u = users.find(x => x.name === name);
+            return u && isAccountActive(u);
+        });
+        if (activeAdmins.length > MAX_ADMINS) {
+            findings.push({
+                id:          'syn-admins-many',
+                title:       t('checkAdminsFailTitle', activeAdmins.length),
+                description: t('checkAdminsDesc', MAX_ADMINS),
+                severity:    'low',
+                status:      'fail',
+                category:    t('catUsers'),
+                frameworks:  adminFw,
+                affectedItems: activeAdmins,
+                remediation: t('checkAdminsRemediation'),
+            });
+        } else {
+            findings.push({
+                id:          'syn-admins-ok',
+                title:       t('checkAdminsPassTitle', activeAdmins.length),
+                description: '',
+                severity:    'info',
+                status:      'pass',
+                category:    t('catUsers'),
+                frameworks:  adminFw,
                 affectedItems: [],
                 remediation: '',
             });

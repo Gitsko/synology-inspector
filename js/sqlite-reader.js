@@ -289,6 +289,7 @@ function buildSynoConfigMap(buffer) {
  * Column indices are fixed by the Synology DSM .dss schema:
  *   confbkp_user_tb:             name(0), uid(1), expire(9)
  *   confbkp_group_member_list_tb: group_name(0), member_name(1)
+ *   confbkp_share_privilege_id_tb: share_name(0), user_or_group(1), name(3), privilege(4)
  *   confbkp_scheduler_table:     id(0), json_config(1)
  *   confbkp_auto_config_backup_table: key(0), value(1)
  *   confbkp_volume_tb:           vid(0), location(1), fstype(2), mount_point(3)
@@ -297,11 +298,11 @@ function buildSynoConfigMap(buffer) {
  * are themselves JSON strings (e.g. '"SYNO.SDS.TaskScheduler.Recycle"\n').
  *
  * @param {ArrayBuffer|Uint8Array} buffer  Raw SQLite 3 database bytes
- * @returns {{ users, adminMembers, schedulerTasks, autoBackupConfigured: boolean|null, hasBtrfs }}
+ * @returns {{ users, adminMembers, sharePrivileges, schedulerTasks, autoBackupConfigured: boolean|null, hasBtrfs }}
  */
 function buildSynoExtras(buffer) {
     // ── Users ────────────────────────────────────────────────────────────────────
-    // expire: -1 = active (never expires), 1 = disabled/expired
+    // expire: -1 = never expires, 1 = deactivated, >1 = expiry day (see isAccountActive)
     const userRows = readSQLiteTable(buffer, 'confbkp_user_tb');
     const users = userRows
         .filter(r => typeof r[0] === 'string' && r[0].length > 0)
@@ -312,6 +313,12 @@ function buildSynoExtras(buffer) {
     const adminMembers = groupRows
         .filter(r => r[0] === 'administrators' && typeof r[1] === 'string' && r[1].length > 0)
         .map(r => r[1]);
+
+    // ── Explicit share permissions ───────────────────────────────────────────────
+    // privilege: 'RW', 'RO' or 'Deny'; user_or_group: 'user' or 'group'
+    const sharePrivileges = readSQLiteTable(buffer, 'confbkp_share_privilege_id_tb')
+        .filter(r => typeof r[0] === 'string' && typeof r[3] === 'string')
+        .map(r => ({ share: r[0], type: r[1], name: r[3], privilege: r[4] }));
 
     // ── Scheduler tasks ──────────────────────────────────────────────────────────
     const schedRows      = readSQLiteTable(buffer, 'confbkp_scheduler_table');
@@ -345,5 +352,5 @@ function buildSynoExtras(buffer) {
     const volRows  = readSQLiteTable(buffer, 'confbkp_volume_tb');
     const hasBtrfs = volRows.some(r => Number(r[2]) === 3);
 
-    return { users, adminMembers, schedulerTasks, autoBackupConfigured, hasBtrfs };
+    return { users, adminMembers, sharePrivileges, schedulerTasks, autoBackupConfigured, hasBtrfs };
 }

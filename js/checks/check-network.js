@@ -3,6 +3,7 @@
  *
  * Network perimeter security checks:
  *   1. DoS protection not enabled on all interfaces  (medium)
+ *   2. Firewall disabled                             (medium)
  */
 
 function checkNetwork(config, _tlsProfile) {
@@ -60,6 +61,44 @@ function checkNetwork(config, _tlsProfile) {
                 remediation: t('checkDoSRemediation'),
             });
         }
+    }
+
+    // ── Firewall ──────────────────────────────────────────────────────────────
+    // FIREWALL_config is JSON: { config_firewall_settings: { profile, status } }
+    const fwFw = [fwRef('CIS', '4.4'), fwRef('NIST', 'SC-7'), fwRef('ISO', 'A.8.20')];
+    let firewallOn = null;
+    try {
+        const raw = config.get('FIREWALL_config');
+        const status = raw ? JSON.parse(raw)?.config_firewall_settings?.status : undefined;
+        if (typeof status === 'boolean') firewallOn = status;
+    } catch (_) {}
+
+    if (firewallOn === null) {
+        findings.push(unknownFinding('syn-firewall-unknown', t('checkNameFirewall'), t('catNetwork'), fwFw));
+    } else if (!firewallOn) {
+        findings.push({
+            id:          'syn-firewall-off',
+            title:       t('checkFirewallFailTitle'),
+            description: t('checkFirewallDesc'),
+            severity:    'medium',
+            status:      'fail',
+            category:    t('catNetwork'),
+            frameworks:  fwFw,
+            affectedItems: [],
+            remediation: t('checkFirewallRemediation'),
+        });
+    } else {
+        findings.push({
+            id:          'syn-firewall-on',
+            title:       t('checkFirewallPassTitle'),
+            description: '',
+            severity:    'info',
+            status:      'pass',
+            category:    t('catNetwork'),
+            frameworks:  fwFw,
+            affectedItems: [],
+            remediation: '',
+        });
     }
 
     return findings;

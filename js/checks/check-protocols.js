@@ -6,9 +6,35 @@
  *   2. NTLMv1 auth enabled (high)
  *   3. FTP anonymous access enabled (high)
  *   4. FTP without TLS enabled      (medium)
+ *   5. TLS 1.0/1.1 allowed on web services (medium)
  */
 
-function checkProtocols(config, _tlsProfile) {
+const WEAK_TLS_PROTOCOLS = ['SSLv2', 'SSLv3', 'TLSv1', 'TLSv1.1'];
+
+/**
+ * Find services whose nginx TLS snippet still allows outdated protocols.
+ * Only files named <service>.conf are evaluated; DSM leaves temp-* copies behind.
+ *
+ * @param {Array<{name: string, text: string}>} tlsConfigs
+ * @returns {{ evaluated: number, weak: string[] }}
+ */
+function findWeakTlsServices(tlsConfigs) {
+    let evaluated = 0;
+    const weak = [];
+    for (const { name, text } of tlsConfigs || []) {
+        const base = name.split('/').pop();
+        if (!base.endsWith('.conf') || base.startsWith('temp-')) continue;
+        const m = /^\s*ssl_protocols\s+([^;]+);/m.exec(text);
+        if (!m) continue;
+        evaluated++;
+        const protocols = m[1].trim().split(/\s+/);
+        const bad = protocols.filter(p => WEAK_TLS_PROTOCOLS.includes(p));
+        if (bad.length) weak.push(`${base.slice(0, -5)} (${bad.join(', ')})`);
+    }
+    return { evaluated, weak };
+}
+
+function checkProtocols(config, _tlsProfile, parseResult) {
     const findings = [];
 
     // ── SMBv1 ────────────────────────────────────────────────────────────────
@@ -117,6 +143,37 @@ function checkProtocols(config, _tlsProfile) {
             status:      'pass',
             category:    t('catProtocols'),
             frameworks:  [fwRef('CIS', '9.2'), fwRef('NIST', 'SC-8'), fwRef('ISO', 'A.8.24')],
+            affectedItems: [],
+            remediation: '',
+        });
+    }
+
+    // ── Outdated TLS versions ─────────────────────────────────────────────────
+    const tlsFw = [fwRef('CIS', '3.10'), fwRef('NIST', 'SC-8'), fwRef('ISO', 'A.8.24'), fwRef('PCI', 'Req.4.2.1')];
+    const tls   = findWeakTlsServices(parseResult?.tlsConfigs);
+    if (tls.evaluated === 0) {
+        findings.push(unknownFinding('syn-tls-unknown', t('checkNameTLS'), t('catProtocols'), tlsFw));
+    } else if (tls.weak.length) {
+        findings.push({
+            id:          'syn-tls-weak',
+            title:       t('checkTLSFailTitle'),
+            description: t('checkTLSDesc'),
+            severity:    'medium',
+            status:      'fail',
+            category:    t('catProtocols'),
+            frameworks:  tlsFw,
+            affectedItems: tls.weak,
+            remediation: t('checkTLSRemediation'),
+        });
+    } else {
+        findings.push({
+            id:          'syn-tls-ok',
+            title:       t('checkTLSPassTitle'),
+            description: '',
+            severity:    'info',
+            status:      'pass',
+            category:    t('catProtocols'),
+            frameworks:  tlsFw,
             affectedItems: [],
             remediation: '',
         });
