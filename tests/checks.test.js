@@ -32,9 +32,27 @@ test('missing data is reported as unknown, never as passed', () => {
     assert.deepEqual(unknown, [
         'syn-admin-unknown', 'syn-admins-unknown', 'syn-config-backup-unknown', 'syn-csrf-unknown',
         'syn-dos-unknown', 'syn-firewall-unknown', 'syn-guest-unknown', 'syn-iframe-unknown',
-        'syn-ip-check-unknown', 'syn-qc-unknown', 'syn-security-updates-unknown', 'syn-smb1-unknown',
-        'syn-tls-unknown',
+        'syn-ip-check-unknown', 'syn-ntlmv1-unknown', 'syn-qc-unknown', 'syn-security-updates-unknown',
+        'syn-smb1-unknown', 'syn-ssh-unknown', 'syn-telnet-unknown', 'syn-tls-unknown',
     ]);
+});
+
+test('settings verified in real backups pass only with their explicit value', () => {
+    const app = loadApp();
+    const passes = runChecks(app, {}, { autoBackupConfigured: null }).filter(f => f.status === 'pass').map(f => f.id);
+    for (const id of ['syn-ssh-disabled', 'syn-telnet-disabled', 'syn-ntlmv1-disabled', 'syn-guest-disabled', 'syn-admins-ok']) {
+        assert.ok(!passes.includes(id), `${id} must not pass without data`);
+    }
+    const off = runChecks(app, { Terminal_isEnableSSH: '0', Terminal_isEnableTelnet: '0', CIFS_Enable_NTLMv1_Auth: '0' });
+    for (const id of ['syn-ssh-disabled', 'syn-telnet-disabled', 'syn-ntlmv1-disabled']) assert.ok(ids(off).includes(id), id);
+});
+
+test('missing guest row or no active administrator is unknown', () => {
+    const app = loadApp();
+    const users = [{ name: 'alice', uid: 1026, expire: -1 }];
+    assert.ok(ids(runChecks(app, {}, { users })).includes('syn-guest-unknown'));
+    const inactive = runChecks(app, {}, { users: [{ name: 'admin', uid: 1024, expire: 1 }], adminMembers: ['admin'] });
+    assert.ok(ids(inactive).includes('syn-admins-unknown'));
 });
 
 test('unknown findings do not change the score', () => {
@@ -113,6 +131,11 @@ test('TLS check flags outdated protocols and ignores temp copies', () => {
     ] });
     assert.ok(ids(strong).includes('syn-tls-ok'));
 
+    const twoServers = runChecks(app, {}, { tlsConfigs: [
+        { name: 'ConfigBkp/tls_profile/config/dsm.conf', text: conf('TLSv1.2') + conf('TLSv1 TLSv1.2') },
+    ] });
+    assert.deepEqual([...byId(twoServers, 'syn-tls-weak').affectedItems], ['dsm (TLSv1)']);
+
     const noDirective = runChecks(app, {}, { tlsConfigs: [
         { name: 'ConfigBkp/tls_profile/config/LogCenter.conf', text: 'ssl_certificate x;\n' },
     ] });
@@ -131,7 +154,20 @@ test('update settings: security check and best practice agree on hotfix-security
     };
     assert.deepEqual(run('notify'), ['bp-update-notify-ok:pass', 'syn-security-updates-manual:fail']);
     assert.deepEqual(run('hotfix-security'), ['bp-update-notify-ok:pass', 'syn-security-updates-auto:pass']);
-    assert.deepEqual(run('all'), ['bp-update-auto:fail', 'syn-security-updates-auto:pass']);
+    assert.deepEqual(run('all'), ['bp-update-auto:fail', 'syn-security-updates-unknown:unknown']);
+});
+
+test('non-string update type is unknown, not a pass', () => {
+    const app = loadApp();
+    const findings = runChecks(app, { UPDATE_setting_v4: JSON.stringify({ autoupdate_type: true }) });
+    assert.ok(ids(findings).includes('syn-security-updates-unknown'));
+});
+
+test('unrecognized SMB minimum protocol is unknown, not a pass', () => {
+    const app = loadApp();
+    assert.ok(ids(runChecks(app, { CIFS_Min_Protocol: 'typo' })).includes('syn-smb1-unknown'));
+    assert.ok(ids(runChecks(app, { CIFS_Min_Protocol: 'SMB2' })).includes('syn-smb1-disabled'));
+    assert.ok(ids(runChecks(app, { CIFS_Min_Protocol: 'NT1' })).includes('syn-smb1-enabled'));
 });
 
 test('anonymous FTP is only reported while FTP is enabled', () => {
@@ -164,10 +200,12 @@ test('every i18n key exists in English and German', () => {
 test('every translation key used by the checks is defined', () => {
     const app = loadApp('de');
     const dir = path.join(ROOT, 'js/checks');
+    const files = [...fs.readdirSync(dir).map(f => path.join(dir, f)),
+        path.join(ROOT, 'js/compliance-engine.js'), path.join(ROOT, 'js/compliance-view.js')];
     const used = new Set();
-    for (const file of fs.readdirSync(dir)) {
-        const src = fs.readFileSync(path.join(dir, file), 'utf8');
-        for (const m of src.matchAll(/\bt\('(\w+)'/g)) used.add(m[1]);
+    for (const file of files) {
+        const src = fs.readFileSync(file, 'utf8');
+        for (const m of src.matchAll(/\bt\('(\w+)'\s*[,)]/g)) used.add(m[1]);
     }
     assert.deepEqual([...used].filter(k => app.t(k) === k), []);
 });

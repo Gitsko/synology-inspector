@@ -89,9 +89,11 @@ function sqliteReadCellPayload(bytes, offset, payloadLen, pageSize, usableSize) 
         visited.add(nextPage);
         const pageOffset = (nextPage - 1) * pageSize;
         if (pageOffset + 4 > bytes.length) break;
-        const chunkLen = Math.min(usableSize - 4, payloadLen - written);
-        payload.set(bytes.subarray(pageOffset + 4, pageOffset + 4 + chunkLen), written);
-        written  += chunkLen;
+        const wanted   = Math.min(usableSize - 4, payloadLen - written);
+        const chunk    = bytes.subarray(pageOffset + 4, pageOffset + 4 + wanted);
+        payload.set(chunk, written);
+        written  += chunk.length;
+        if (chunk.length < wanted) break;   // truncated file
         nextPage  = sqliteReadU32(bytes, pageOffset);
     }
 
@@ -213,11 +215,12 @@ function sqliteScanBTree(bytes, pageNum, pageSize, usableSize) {
             const cellOffset = pageOffset + cellPtr;
             // Cell: 4-byte left child page number + varint key (key not needed)
             const childPage = sqliteReadU32(bytes, cellOffset);
-            results.push(...sqliteScanBTree(bytes, childPage, pageSize, usableSize));
+            for (const row of sqliteScanBTree(bytes, childPage, pageSize, usableSize)) results.push(row);
         }
 
-        // Process the rightmost child
-        results.push(...sqliteScanBTree(bytes, rightChildPage, pageSize, usableSize));
+        // Process the rightmost child (loop instead of spread: large subtrees
+        // would exceed the engine's argument limit)
+        for (const row of sqliteScanBTree(bytes, rightChildPage, pageSize, usableSize)) results.push(row);
     }
 
     return results;
@@ -345,7 +348,7 @@ function buildSynoExtras(buffer) {
     const backupRows = readSQLiteTable(buffer, 'confbkp_auto_config_backup_table');
     const backupMap  = new Map(backupRows.map(r => [r[0], r[1]]));
     const notSetBefore = backupMap.get('not_set_before');
-    const autoBackupConfigured = notSetBefore === undefined ? null : notSetBefore !== 'true';
+    const autoBackupConfigured = notSetBefore === 'false' ? true : notSetBefore === 'true' ? false : null;
 
     // ── btrfs volumes ────────────────────────────────────────────────────────────
     // fstype = 3 → btrfs

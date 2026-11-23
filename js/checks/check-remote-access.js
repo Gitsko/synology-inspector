@@ -53,9 +53,12 @@ function checkRemoteAccess(config, _tlsProfile) {
 
     // ── SSH ───────────────────────────────────────────────────────────────────
     // Terminal_isEnableSSH: '1' = enabled. We check presence, not port number.
-    const sshEnabled = config.get('Terminal_isEnableSSH') === '1';
+    const sshVal = config.get('Terminal_isEnableSSH');
 
-    if (sshEnabled) {
+    if (sshVal !== '0' && sshVal !== '1') {
+        findings.push(unknownFinding('syn-ssh-unknown', t('checkNameSSH'), t('catRemoteAccess'),
+            [fwRef('CIS', '4.6'), fwRef('NIST', 'CM-7')]));
+    } else if (sshVal === '1') {
         findings.push({
             id:          'syn-ssh-enabled',
             title:       t('checkSSHFailTitle'),
@@ -82,8 +85,11 @@ function checkRemoteAccess(config, _tlsProfile) {
     }
 
     // ── Telnet ───────────────────────────────────────────────────────────────
-    const telnetEnabled = config.get('Terminal_isEnableTelnet') === '1';
-    if (telnetEnabled) {
+    const telnetVal = config.get('Terminal_isEnableTelnet');
+    if (telnetVal !== '0' && telnetVal !== '1') {
+        findings.push(unknownFinding('syn-telnet-unknown', t('checkNameTelnet'), t('catRemoteAccess'),
+            [fwRef('CIS', '4.6'), fwRef('NIST', 'SC-8')]));
+    } else if (telnetVal === '1') {
         findings.push({
             id:          'syn-telnet-enabled',
             title:       t('checkTelnetFailTitle'),

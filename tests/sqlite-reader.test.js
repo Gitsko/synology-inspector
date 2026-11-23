@@ -33,7 +33,7 @@ function buildDb(setup) {
 
 test('reads negative integers of every serial type width', () => {
     const app = loadApp();
-    const values = [-1, -128, -129, -32768, -8388608, -2147483648, -140737488355328, 1, 255, 32767, 2147483647];
+    const values = [-1, -128, -129, -32768, -8388608, -2147483648, -140737488355328, -9007199254740991, 1, 255, 32767, 2147483647];
     const bytes = buildDb(db => {
         db.exec('CREATE TABLE t (v INTEGER)');
         const ins = db.prepare('INSERT INTO t VALUES (?)');
@@ -89,4 +89,25 @@ test('extracts users, administrators and share permissions', () => {
     assert.deepEqual(plain(ex.sharePrivileges),
         [{ share: 'public', type: 'user', name: 'guest', privilege: 'RO' }]);
     assert.equal(ex.autoBackupConfigured, null);
+});
+
+test('a truncated overflow chain yields a shorter value, not padded bytes', () => {
+    const app = loadApp();
+    const bytes = buildDb(db => {
+        db.exec('CREATE TABLE confbkp_config_tb (config_key TEXT, config_value TEXT)');
+        db.prepare('INSERT INTO confbkp_config_tb VALUES (?, ?)').run('BIG', 'A'.repeat(1499) + 'Z');
+    });
+    const value = app.buildSynoConfigMap(bytes.subarray(0, bytes.length - 1)).get('BIG');
+    assert.ok(value === null || !value.includes('\u0000'), 'no NUL padding');
+});
+
+test('auto config backup state needs an explicit true/false flag', () => {
+    const app = loadApp();
+    const state = flag => app.buildSynoExtras(buildDb(db => {
+        db.exec('CREATE TABLE confbkp_auto_config_backup_table (key TEXT, value TEXT)');
+        db.prepare('INSERT INTO confbkp_auto_config_backup_table VALUES (?, ?)').run('not_set_before', flag);
+    })).autoBackupConfigured;
+    assert.equal(state('false'), true);
+    assert.equal(state('true'), false);
+    assert.equal(state(null), null);
 });

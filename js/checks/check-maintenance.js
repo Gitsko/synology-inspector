@@ -44,15 +44,17 @@ function checkMaintenance(config, _tlsProfile, parseResult) {
     // ── Automatic security updates ────────────────────────────────────────────
     // UPDATE_setting_v4.autoupdate_type: 'notify' = only notify, nothing is
     // installed automatically; 'hotfix-security' = important/security updates
-    // are installed automatically (confirmed on DSM 7.x backups).
+    // are installed automatically (confirmed on DSM 7.x backups). Other values
+    // are not verified and reported as unknown.
     const updateFw = [fwRef('CIS', '7.3'), fwRef('NIST', 'SI-2'), fwRef('ISO', 'A.8.8'), fwRef('PCI', 'Req.6.3.3')];
     let updateType = null;
     try {
         const raw = config.get('UPDATE_setting_v4');
-        if (raw) updateType = JSON.parse(raw)?.autoupdate_type || null;
+        const type = raw ? JSON.parse(raw)?.autoupdate_type : undefined;
+        if (typeof type === 'string' && type !== '') updateType = type;
     } catch (_) {}
 
-    if (updateType === null) {
+    if (updateType !== 'notify' && updateType !== 'hotfix-security') {
         findings.push(unknownFinding('syn-security-updates-unknown', t('checkNameSecurityUpdates'),
             t('catMaintenance'), updateFw));
     } else if (updateType === 'notify') {

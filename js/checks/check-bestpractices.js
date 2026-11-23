@@ -217,7 +217,8 @@ function checkBestPractices(config, _tlsProfile, parseResult) {
     let updateType = null;
     try {
         const raw = config.get('UPDATE_setting_v4');
-        if (raw) updateType = JSON.parse(raw)?.autoupdate_type || null;
+        const type = raw ? JSON.parse(raw)?.autoupdate_type : undefined;
+        if (typeof type === 'string' && type !== '') updateType = type;
     } catch (_) {}
 
     if (updateType !== null) {

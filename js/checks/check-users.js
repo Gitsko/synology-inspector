@@ -151,11 +151,11 @@ function checkUsers(config, _tlsProfile, parseResult) {
 
     // ── Guest account ─────────────────────────────────────────────────────────
     const guestFw = [fwRef('CIS', '4.7'), fwRef('NIST', 'AC-2'), fwRef('ISO', 'A.5.18')];
-    if (users.length === 0) {
+    const guest = users.find(u => u.name === 'guest');
+    if (!guest) {
         findings.push(unknownFinding('syn-guest-unknown', t('checkNameGuest'), t('catUsers'), guestFw));
     } else {
-        const guest = users.find(u => u.name === 'guest');
-        if (guest && isAccountActive(guest)) {
+        if (isAccountActive(guest)) {
             const guestShares = (parseResult?.sharePrivileges || [])
                 .filter(p => p.type === 'user' && p.name === 'guest' && (p.privilege === 'RW' || p.privilege === 'RO'))
                 .map(p => `${p.share} (${p.privilege})`);
@@ -197,7 +197,9 @@ function checkUsers(config, _tlsProfile, parseResult) {
             const u = users.find(x => x.name === name);
             return u && isAccountActive(u);
         });
-        if (activeAdmins.length > MAX_ADMINS) {
+        if (activeAdmins.length === 0) {
+            findings.push(unknownFinding('syn-admins-unknown', t('checkNameAdmins'), t('catUsers'), adminFw));
+        } else if (activeAdmins.length > MAX_ADMINS) {
             findings.push({
                 id:          'syn-admins-many',
                 title:       t('checkAdminsFailTitle', activeAdmins.length),

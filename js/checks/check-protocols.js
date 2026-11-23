@@ -24,11 +24,11 @@ function findWeakTlsServices(tlsConfigs) {
     for (const { name, text } of tlsConfigs || []) {
         const base = name.split('/').pop();
         if (!base.endsWith('.conf') || base.startsWith('temp-')) continue;
-        const m = /^\s*ssl_protocols\s+([^;]+);/m.exec(text);
-        if (!m) continue;
+        const directives = [...text.matchAll(/^\s*ssl_protocols\s+([^;]+);/gm)];
+        if (!directives.length) continue;
         evaluated++;
-        const protocols = m[1].trim().split(/\s+/);
-        const bad = protocols.filter(p => WEAK_TLS_PROTOCOLS.includes(p));
+        const protocols = directives.flatMap(m => m[1].trim().split(/\s+/));
+        const bad = [...new Set(protocols.filter(p => WEAK_TLS_PROTOCOLS.includes(p)))];
         if (bad.length) weak.push(`${base.slice(0, -5)} (${bad.join(', ')})`);
     }
     return { evaluated, weak };
@@ -41,8 +41,9 @@ function checkProtocols(config, _tlsProfile, parseResult) {
     // CIFS_Min_Protocol: 'SMB1' / 'NT1' = SMBv1 allowed; 'SMB2' / 'SMB3' = secure
     const minProto  = (config.get('CIFS_Min_Protocol') || '').toUpperCase();
     const smb1On    = (minProto === 'SMB1' || minProto === 'NT1');
+    const smb2Plus  = /^SMB[23]/.test(minProto);
 
-    if (minProto === '') {
+    if (!smb1On && !smb2Plus) {
         findings.push(unknownFinding('syn-smb1-unknown', t('checkNameSMBMinProto'), t('catProtocols'),
             [fwRef('CIS', '9.4'), fwRef('NIST', 'CM-7')]));
     } else if (smb1On) {
@@ -72,8 +73,11 @@ function checkProtocols(config, _tlsProfile, parseResult) {
     }
 
     // ── NTLMv1 authentication ─────────────────────────────────────────────────
-    const ntlmv1On = config.get('CIFS_Enable_NTLMv1_Auth') === '1';
-    if (ntlmv1On) {
+    const ntlmv1Val = config.get('CIFS_Enable_NTLMv1_Auth');
+    if (ntlmv1Val !== '0' && ntlmv1Val !== '1') {
+        findings.push(unknownFinding('syn-ntlmv1-unknown', t('checkNameNTLMv1'), t('catProtocols'),
+            [fwRef('CIS', '9.4'), fwRef('NIST', 'IA-3')]));
+    } else if (ntlmv1Val === '1') {
         findings.push({
             id:          'syn-ntlmv1-enabled',
             title:       t('checkNTLMv1FailTitle'),

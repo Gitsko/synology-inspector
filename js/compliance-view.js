@@ -187,7 +187,7 @@ function renderComplianceView(findings) {
         ${renderScoreHeader(findings, failFindings, score)}
         ${renderStatusBar(failFindings, visible)}
         <div class="findings-scroll-area">
-            ${renderFindingsByCategory(visible)}
+            ${renderFindingsByCategory(visible, unknownFindings.length)}
             ${renderUnknownSection(unknownFindings)}
             ${renderPassedSection(passFindings)}
             ${renderExcludedChecksSection()}
@@ -239,15 +239,17 @@ function renderScoreHeader(allFindings, failFindings, score) {
         const stats    = frameworkStats[code] || { fail: 0, pass: 0 };
         const isActive = complianceState.frameworkFilter === code;
         const hasIssues = stats.fail > 0;
+        // A framework whose checks could all not be evaluated is not "clean"
+        const evaluated = stats.fail + stats.pass > 0;
         return `
-            <button class="fw-chip ${isActive ? 'fw-chip--active' : ''} ${hasIssues ? 'fw-chip--issues' : 'fw-chip--clean'}"
+            <button class="fw-chip ${isActive ? 'fw-chip--active' : ''} ${hasIssues ? 'fw-chip--issues' : evaluated ? 'fw-chip--clean' : ''}"
                     style="--chip-color: ${meta.color}"
                     onclick="setComplianceFrameworkFilter('${code}')"
                     title="${meta.label}">
                 ${code}
                 ${hasIssues
                     ? `<span class="fw-chip-count">${stats.fail}</span>`
-                    : '<span class="fw-chip-clean">✓</span>'}
+                    : evaluated ? '<span class="fw-chip-clean">✓</span>' : ''}
             </button>
         `;
     }).join('');
@@ -317,13 +319,13 @@ function renderStatusBar(allFail, visible) {
 
 // ── Findings grouped by category ──────────────────────────────────────────────
 
-function renderFindingsByCategory(findings) {
+function renderFindingsByCategory(findings, unknownCount = 0) {
     if (findings.length === 0) {
         return `
             <div class="findings-empty-state">
                 <div class="findings-empty-icon">✓</div>
                 <div class="findings-empty-title">${t('noFindingsTitle')}</div>
-                <div class="findings-empty-sub">${t('noFindingsSub')}</div>
+                <div class="findings-empty-sub">${unknownCount ? t('noFindingsSubUnknown', unknownCount) : t('noFindingsSub')}</div>
             </div>
         `;
     }
