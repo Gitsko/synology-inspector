@@ -151,8 +151,9 @@ function renderComplianceView(findings) {
     _cachedFindings = findings;
 
     const failFindings = findings.filter(f => f.status === 'fail');
-    const passFindings = findings.filter(f => f.status === 'pass');
-    const score        = calculateSecurityScore(findings);
+    const passFindings    = findings.filter(f => f.status === 'pass');
+    const unknownFindings = findings.filter(f => f.status === 'unknown');
+    const score           = calculateSecurityScore(findings);
 
     let visible = [...failFindings];
     if (complianceState.frameworkFilter) {
@@ -170,6 +171,7 @@ function renderComplianceView(findings) {
         ${renderStatusBar(failFindings, visible)}
         <div class="findings-scroll-area">
             ${renderFindingsByCategory(visible)}
+            ${renderUnknownSection(unknownFindings)}
             ${renderPassedSection(passFindings)}
             ${renderExcludedChecksSection()}
             ${renderDisclaimer()}
@@ -211,8 +213,8 @@ function renderScoreHeader(allFindings, failFindings, score) {
     for (const f of allFindings) {
         for (const fw of f.frameworks) {
             if (!frameworkStats[fw.code]) frameworkStats[fw.code] = { fail: 0, pass: 0 };
-            if (f.status === 'fail') frameworkStats[fw.code].fail++;
-            else                     frameworkStats[fw.code].pass++;
+            if (f.status === 'fail')      frameworkStats[fw.code].fail++;
+            else if (f.status === 'pass') frameworkStats[fw.code].pass++;
         }
     }
 
@@ -416,6 +418,37 @@ function renderPassedSection(passFindings) {
             <div class="passed-section-header">
                 ${t('passedChecks')} <span class="passed-count">${passFindings.length}</span>
             </div>
+            <div class="passed-list">${cards}</div>
+        </div>
+    `;
+}
+
+// ── Checks that could not be evaluated ───────────────────────────────────────
+
+function renderUnknownSection(unknownFindings) {
+    if (unknownFindings.length === 0) return '';
+
+    const cards = unknownFindings.map(f => `
+        <div class="finding-card finding-card--unknown" style="--stripe-color: #94a3b8">
+            <div class="finding-stripe"></div>
+            <div class="finding-card-content">
+                <div class="finding-header finding-header--pass">
+                    <div class="finding-header-main">
+                        <span class="severity-pill severity-pill--unknown">${t('severityUnknown')}</span>
+                        <span class="finding-category">${escapeHtml(f.category)}</span>
+                    </div>
+                    <div class="finding-title finding-title--pass">${escapeHtml(f.title)}</div>
+                </div>
+            </div>
+        </div>
+    `).join('');
+
+    return `
+        <div class="passed-section unknown-section">
+            <div class="passed-section-header unknown-section-header">
+                ${t('unknownChecks')} <span class="passed-count unknown-count">${unknownFindings.length}</span>
+            </div>
+            <p class="unknown-section-hint">${t('unknownDesc')}</p>
             <div class="passed-list">${cards}</div>
         </div>
     `;

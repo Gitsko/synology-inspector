@@ -42,7 +42,10 @@ function checkWebSecurity(config, _tlsProfile) {
     const { dsmSecurity, dsmEmbedSecurity } = parseDsmSecurityBlob(config);
 
     // ── CSRF protection ───────────────────────────────────────────────────────
-    if (dsmSecurity !== null) {
+    if (dsmSecurity === null) {
+        findings.push(unknownFinding('syn-csrf-unknown', t('checkNameCSRF'), t('catAuth'),
+            [fwRef('CIS', '16.6'), fwRef('NIST', 'SI-10')]));
+    } else {
         const csrfEnabled = dsmSecurity.enable_csrf_protection === true;
 
         if (csrfEnabled) {
@@ -73,7 +76,10 @@ function checkWebSecurity(config, _tlsProfile) {
     }
 
     // ── iFrame embedding ──────────────────────────────────────────────────────
-    if (dsmEmbedSecurity !== null) {
+    if (dsmEmbedSecurity === null) {
+        findings.push(unknownFinding('syn-iframe-unknown', t('checkNameIFrame'), t('catAuth'),
+            [fwRef('CIS', '16.6'), fwRef('NIST', 'SI-10')]));
+    } else {
         const iframeBlocked = dsmEmbedSecurity.enable_block === true;
 
         if (iframeBlocked) {
@@ -106,7 +112,10 @@ function checkWebSecurity(config, _tlsProfile) {
     // ── Session IP binding ────────────────────────────────────────────────────
     // skip_ip_checking = true means DSM no longer verifies that requests in a
     // session come from the same IP as the login → session hijacking is easier.
-    if (dsmSecurity !== null) {
+    if (dsmSecurity === null) {
+        findings.push(unknownFinding('syn-ip-check-unknown', t('checkNameIPCheck'), t('catAuth'),
+            [fwRef('NIST', 'AC-17'), fwRef('ISO', 'A.8.5')]));
+    } else {
         const ipCheckingSkipped = dsmSecurity.skip_ip_checking === true;
 
         if (!ipCheckingSkipped) {

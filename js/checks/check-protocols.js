@@ -13,10 +13,13 @@ function checkProtocols(config, _tlsProfile) {
 
     // ── SMBv1 ────────────────────────────────────────────────────────────────
     // CIFS_Min_Protocol: 'SMB1' / 'NT1' = SMBv1 allowed; 'SMB2' / 'SMB3' = secure
-    const minProto  = (config.get('CIFS_Min_Protocol') || 'SMB2').toUpperCase();
+    const minProto  = (config.get('CIFS_Min_Protocol') || '').toUpperCase();
     const smb1On    = (minProto === 'SMB1' || minProto === 'NT1');
 
-    if (smb1On) {
+    if (minProto === '') {
+        findings.push(unknownFinding('syn-smb1-unknown', t('checkNameSMBMinProto'), t('catProtocols'),
+            [fwRef('CIS', '9.4'), fwRef('NIST', 'CM-7')]));
+    } else if (smb1On) {
         findings.push({
             id:          'syn-smb1-enabled',
             title:       t('checkSMB1FailTitle'),

@@ -11,11 +11,19 @@ function checkRemoteAccess(config, _tlsProfile) {
     const findings = [];
 
     // ── QuickConnect ─────────────────────────────────────────────────────────
-    const qcRaw = config.get('QUICKCONNECT_config');
+    const qcRaw   = config.get('QUICKCONNECT_config');
+    let qcEnabled = null;
     if (qcRaw) {
-        let qcEnabled = false;
-        try { qcEnabled = JSON.parse(qcRaw)?.quickconnect?.enabled === true; } catch (_) {}
+        try {
+            const enabled = JSON.parse(qcRaw)?.quickconnect?.enabled;
+            if (typeof enabled === 'boolean') qcEnabled = enabled;
+        } catch (_) {}
+    }
 
+    if (qcEnabled === null) {
+        findings.push(unknownFinding('syn-qc-unknown', t('checkNameQC'), t('catRemoteAccess'),
+            [fwRef('CIS', '4.8'), fwRef('NIST', 'SC-7')]));
+    } else {
         if (qcEnabled) {
             findings.push({
                 id:          'syn-qc-enabled',

@@ -18,7 +18,8 @@ function checkNetwork(config, _tlsProfile) {
     if (dosConfigRaw) {
         try {
             const dosConfig = JSON.parse(dosConfigRaw);
-            dosConfigAvailable = true;
+            dosConfigAvailable = dosConfig !== null && typeof dosConfig === 'object'
+                && Object.keys(dosConfig).length > 0;
             for (const [confFilePath, iniContent] of Object.entries(dosConfig)) {
                 const interfaceName = confFilePath
                     .replace('/etc/fw_security/', '')
@@ -30,7 +31,10 @@ function checkNetwork(config, _tlsProfile) {
         } catch (_) {}
     }
 
-    if (dosConfigAvailable) {
+    if (!dosConfigAvailable) {
+        findings.push(unknownFinding('syn-dos-unknown', t('checkNameDoS'), t('catNetwork'),
+            [fwRef('NIST', 'SC-5'), fwRef('ISO', 'A.8.20')]));
+    } else {
         if (unprotectedInterfaces.length === 0) {
             findings.push({
                 id:          'syn-dos-protected',

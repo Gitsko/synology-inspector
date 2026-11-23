@@ -19,7 +19,9 @@
  *   title         {string}   short human-readable title
  *   description   {string}   longer explanation of the issue
  *   severity      {string}   'critical' | 'high' | 'medium' | 'low' | 'info'
- *   status        {string}   'fail' | 'pass'
+ *   status        {string}   'fail' | 'pass' | 'unknown'
+ *                            'unknown' = the setting is missing from the backup
+ *                            or could not be parsed; it never affects the score
  *   category      {string}   display category
  *   frameworks    {Array}    [{code, ref, label}]
  *   affectedItems {string[]} human-readable list of affected objects
@@ -44,6 +46,30 @@ const BEST_PRACTICES_CHECKS = [];
  */
 function fwRef(code, ref) {
     return { code, ref, label: `${code} ${ref}` };
+}
+
+/**
+ * Build a finding for a check whose input data is missing or unparseable.
+ * Missing data must never be reported as a pass.
+ *
+ * @param {string}   id
+ * @param {string}   name        translated, human-readable check name
+ * @param {string}   category    translated category
+ * @param {Object[]} frameworks
+ * @returns {Object}
+ */
+function unknownFinding(id, name, category, frameworks) {
+    return {
+        id,
+        title:         t('unknownTitle', name),
+        description:   t('unknownDesc'),
+        severity:      'info',
+        status:        'unknown',
+        category,
+        frameworks,
+        affectedItems: [],
+        remediation:   '',
+    };
 }
 
 // ── Scoring ────────────────────────────────────────────────────────────────────

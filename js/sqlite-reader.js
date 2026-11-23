@@ -297,7 +297,7 @@ function buildSynoConfigMap(buffer) {
  * are themselves JSON strings (e.g. '"SYNO.SDS.TaskScheduler.Recycle"\n').
  *
  * @param {ArrayBuffer|Uint8Array} buffer  Raw SQLite 3 database bytes
- * @returns {{ users, adminMembers, schedulerTasks, autoBackupConfigured, hasBtrfs }}
+ * @returns {{ users, adminMembers, schedulerTasks, autoBackupConfigured: boolean|null, hasBtrfs }}
  */
 function buildSynoExtras(buffer) {
     // ── Users ────────────────────────────────────────────────────────────────────
@@ -333,10 +333,12 @@ function buildSynoExtras(buffer) {
     }
 
     // ── Auto config backup ───────────────────────────────────────────────────────
-    // not_set_before = 'true' means backup has NOT been configured yet
+    // not_set_before = 'true' means backup has NOT been configured yet.
+    // null = table or key missing, the state cannot be determined.
     const backupRows = readSQLiteTable(buffer, 'confbkp_auto_config_backup_table');
     const backupMap  = new Map(backupRows.map(r => [r[0], r[1]]));
-    const autoBackupConfigured = backupMap.get('not_set_before') !== 'true';
+    const notSetBefore = backupMap.get('not_set_before');
+    const autoBackupConfigured = notSetBefore === undefined ? null : notSetBefore !== 'true';
 
     // ── btrfs volumes ────────────────────────────────────────────────────────────
     // fstype = 3 → btrfs

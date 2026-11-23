@@ -8,10 +8,13 @@
 
 function checkMaintenance(config, _tlsProfile, parseResult) {
     const findings            = [];
-    const autoBackupConfigured = parseResult?.autoBackupConfigured ?? false;
+    const autoBackupConfigured = parseResult?.autoBackupConfigured ?? null;
 
     // ── Auto config backup ────────────────────────────────────────────────────
-    if (!autoBackupConfigured) {
+    if (autoBackupConfigured === null) {
+        findings.push(unknownFinding('syn-config-backup-unknown', t('checkNameConfigBackup'),
+            t('catMaintenance'), [fwRef('CIS', '12.2'), fwRef('NIST', 'CP-9')]));
+    } else if (!autoBackupConfigured) {
         findings.push({
             id:          'syn-no-config-backup',
             title:       t('checkConfigBackupFailTitle'),

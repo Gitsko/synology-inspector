@@ -558,6 +558,7 @@
 .severity-pill--low      { background: var(--sapInformationBackground, #e1f4ff); color: var(--sapHighlightColor, #0064d9); }
 .severity-pill--info     { background: var(--color-bg-strip);               color: var(--color-text-3); }
 .severity-pill--pass     { background: var(--sapSuccessBackground, #f5fae5); color: var(--sapPositiveColor,  #256f3a); }
+.severity-pill--unknown  { background: var(--sapNeutralBackground, #f5f6f7); color: var(--sapNeutralColor, #556b82); }
 
 .finding-category {
     font-size: 10px;
@@ -845,4 +846,26 @@
     width: 480px;
     max-width: 100%;
     margin-top: 16px;
+}
+
+/*
+ * Checks that could not be evaluated (setting missing or unparseable).
+ * Reuses the passed-section layout with a neutral colour.
+ */
+.unknown-section-header {
+    background: var(--sapNeutralBackground, #f5f6f7);
+    border-color: color-mix(in srgb, var(--sapNeutralColor, #556b82) 25%, transparent);
+    border-left-color: var(--sapNeutralColor, #556b82);
+    color: var(--sapNeutralColor, #556b82);
+}
+
+.unknown-count {
+    background: color-mix(in srgb, var(--sapNeutralColor, #556b82) 12%, transparent);
+    color: var(--sapNeutralColor, #556b82);
+}
+
+.unknown-section-hint {
+    margin: 0 0 8px;
+    font-size: 12px;
+    color: var(--sapNeutralColor, #556b82);
 }

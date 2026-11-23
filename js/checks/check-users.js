@@ -18,7 +18,10 @@ function checkUsers(config, _tlsProfile, parseResult) {
     const adminUser   = users.find(u => u.name === 'admin' || u.uid === 1024);
     const adminActive = adminUser ? adminUser.expire === -1 : false;
 
-    if (adminActive) {
+    if (!adminUser) {
+        findings.push(unknownFinding('syn-admin-unknown', t('checkNameAdmin'), t('catUsers'),
+            [fwRef('CIS', '4.7'), fwRef('NIST', 'AC-2')]));
+    } else if (adminActive) {
         findings.push({
             id:          'syn-admin-active',
             title:       t('checkAdminActiveFailTitle'),

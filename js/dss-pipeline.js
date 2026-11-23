@@ -27,7 +27,8 @@
  *   users:                Array                 local user accounts { name, uid, expire }
  *   adminMembers:         string[]              members of the administrators group
  *   schedulerTasks:       Array                 scheduler tasks { app, state, name }
- *   autoBackupConfigured: boolean               true if auto config backup is configured
+ *   autoBackupConfigured: boolean | null        true if auto config backup is configured,
+ *                                               null if the backup does not contain the state
  *   hasBtrfs:             boolean               true if any volume uses btrfs
  * }
  */
