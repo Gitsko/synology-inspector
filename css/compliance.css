@@ -40,7 +40,7 @@
 
 .tab-btn {
     padding: 12px 20px;
-    font-size: 13px;
+    font-size: .9375rem;
     font-weight: 600;
     color: var(--color-text-2);
     background: none;
@@ -84,7 +84,7 @@
 }
 
 .bp-title {
-    font-size: 16px;
+    font-size: 1.125rem;
     font-weight: 700;
     color: var(--color-text-1);
     letter-spacing: -.2px;
@@ -98,13 +98,13 @@
 
 .bp-issue-count {
     font-family: var(--font-mono);
-    font-size: 28px;
+    font-size: 2rem;
     font-weight: 700;
     line-height: 1;
 }
 
 .bp-issue-label {
-    font-size: 13px;
+    font-size: .9375rem;
     color: var(--color-text-3);
 }
 
@@ -166,14 +166,14 @@
 }
 
 .score-kpi-val {
-    font-size: 56px;
+    font-size: 4rem;
     font-weight: 700;
     font-family: var(--font-sans);
     line-height: 1;
 }
 
 .score-kpi-denom {
-    font-size: 20px;
+    font-size: 1.4375rem;
     font-weight: 400;
     color: var(--color-text-3);
     align-self: flex-end;
@@ -206,14 +206,14 @@
 }
 
 .score-grade-letter {
-    font-size: 36px;
+    font-size: 2.5625rem;
     font-weight: 700;
     font-family: var(--font-sans);
     line-height: 1;
 }
 
 .score-verdict {
-    font-size: 11px;
+    font-size: .875rem;
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: .7px;
@@ -287,14 +287,14 @@
 
 .kpi-number {
     font-family: var(--font-mono);
-    font-size: 26px;
+    font-size: 1.875rem;
     font-weight: 700;
     line-height: 1;
     color: var(--kpi-color);
 }
 
 .kpi-label {
-    font-size: 10px;
+    font-size: .875rem;
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: .5px;
@@ -314,12 +314,12 @@
 }
 
 .filter-row-label {
-    font-size: 10px;
+    font-size: .875rem;
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: .8px;
     color: var(--color-text-3);
-    width: 76px;
+    white-space: nowrap;
     flex-shrink: 0;
 }
 
@@ -328,13 +328,13 @@
     align-items: center;
     gap: 5px;
     padding: 4px 10px;
-    height: 26px;
+    min-height: 26px;
     border-radius: var(--r-sm);
     border: 1px solid var(--color-border);
     background: var(--color-bg-strip);
     color: var(--color-text-2);
     font-family: var(--font-mono);
-    font-size: 11px;
+    font-size: .875rem;
     font-weight: 600;
     cursor: pointer;
     transition: all .12s;
@@ -342,17 +342,17 @@
 
 .fw-chip:hover              { color: var(--chip-color); border-color: var(--chip-color); background: var(--color-bg-panel); }
 .fw-chip--active            { color: var(--chip-color); background: color-mix(in srgb, var(--chip-color) 8%, white); border-color: var(--chip-color); box-shadow: 0 0 0 1px var(--chip-color); }
-.fw-chip--issues .fw-chip-count { font-size: 9px; color: var(--chip-color); }
-.fw-chip--clean .fw-chip-clean  { font-size: 10px; color: var(--color-success); }
+.fw-chip--issues .fw-chip-count { font-size: .875rem; color: var(--chip-color); }
+.fw-chip--clean .fw-chip-clean  { font-size: .875rem; color: var(--color-success); }
 
 .chip-clear-btn {
     padding: 0 10px;
-    height: 26px;
+    min-height: 26px;
     border: 1px solid var(--color-border);
     border-radius: var(--r-sm);
     background: none;
     color: var(--color-text-2);
-    font-size: 12px;
+    font-size: .875rem;
     cursor: pointer;
     transition: color .12s, border-color .12s;
 }
@@ -368,10 +368,10 @@
     background: var(--color-bg-strip);
     border-bottom: 1px solid var(--color-border-sub);
     flex-shrink: 0;
-    font-size: 13px;
+    font-size: .9375rem;
 }
 
-.status-bar-count  { font-family: var(--font-mono); font-size: 14px; font-weight: 700; color: var(--color-text-1); }
+.status-bar-count  { font-family: var(--font-mono); font-size: 1rem; font-weight: 700; color: var(--color-text-1); }
 .status-bar-label  { color: var(--color-text-2); }
 .status-bar-filter { color: var(--color-brand); font-weight: 500; }
 .status-bar-total  { color: var(--color-text-3); }
@@ -379,12 +379,12 @@
 .status-bar-clear {
     margin-left: auto;
     padding: 0 12px;
-    height: 26px;
+    min-height: 26px;
     background: none;
     border: 1px solid var(--color-border);
     border-radius: var(--r-sm);
     color: var(--color-text-2);
-    font-size: 12px;
+    font-size: .875rem;
     cursor: pointer;
     transition: border-color .12s, color .12s;
 }
@@ -423,7 +423,7 @@
 }
 
 .category-header-name {
-    font-size: 12px;
+    font-size: .875rem;
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: .6px;
@@ -432,7 +432,7 @@
 
 .category-header-count {
     font-family: var(--font-mono);
-    font-size: 11px;
+    font-size: .875rem;
     color: var(--color-text-3);
 }
 
@@ -455,9 +455,9 @@
     text-align: center;
 }
 
-.findings-empty-icon  { font-size: 40px; opacity: .3; }
-.findings-empty-title { font-size: 15px; font-weight: 600; color: var(--color-text-2); }
-.findings-empty-sub   { font-size: 13px; }
+.findings-empty-icon  { font-size: 2.875rem; opacity: .3; }
+.findings-empty-title { font-size: 1.0625rem; font-weight: 600; color: var(--color-text-2); }
+.findings-empty-sub   { font-size: .9375rem; }
 
 /* ── Finding cards ───────────────────────────────────────────────────────────── */
 /*
@@ -514,7 +514,7 @@
 
 .finding-title {
     grid-column: 1; grid-row: 2;
-    font-size: 13px;
+    font-size: .9375rem;
     font-weight: 600;
     color: var(--color-text-1);
     line-height: 1.45;
@@ -537,7 +537,7 @@
     width: 28px; height: 28px;
     background: none; border: none; border-radius: var(--r-sm);
     color: var(--color-text-3);
-    font-size: 11px;
+    font-size: .875rem;
     cursor: pointer;
     flex-shrink: 0;
 }
@@ -555,7 +555,7 @@
     align-items: center;
     padding: 2px 8px;
     border-radius: var(--r-sm);
-    font-size: 10px;
+    font-size: .875rem;
     font-weight: 700;
     letter-spacing: .4px;
     flex-shrink: 0;
@@ -570,7 +570,7 @@
 .severity-pill--unknown  { background: var(--sapNeutralBackground, #f5f6f7); color: var(--color-text-3); } /* --sapNeutralColor is 2.9:1 here */
 
 .finding-category {
-    font-size: 10px;
+    font-size: .875rem;
     color: var(--color-text-3);
     text-transform: uppercase;
     letter-spacing: .4px;
@@ -578,7 +578,7 @@
 
 .finding-affected-count {
     font-family: var(--font-mono);
-    font-size: 11px;
+    font-size: .875rem;
     color: var(--color-text-3);
 }
 
@@ -586,7 +586,7 @@
 
 .fw-tag {
     font-family: var(--font-mono);
-    font-size: 10px;
+    font-size: .875rem;
     font-weight: 500;
     padding: 1px 6px;
     border-radius: var(--r-sm);
@@ -618,7 +618,7 @@
 }
 .fw-ref-popover-label {
     font-family: var(--font-mono);
-    font-size: 10px;
+    font-size: .875rem;
     font-weight: 700;
     color: var(--color-text-3);
     text-transform: uppercase;
@@ -626,14 +626,14 @@
     margin-bottom: 5px;
 }
 .fw-ref-popover-title {
-    font-size: 13px;
+    font-size: .9375rem;
     font-weight: 600;
     color: var(--sapTextColor, #131e29);
     line-height: 1.4;
     margin-bottom: 7px;
 }
 .fw-ref-popover-body {
-    font-size: 12px;
+    font-size: .875rem;
     color: var(--sapContent_LabelColor, #556b82);
     line-height: 1.6;
 }
@@ -646,7 +646,7 @@
 }
 
 .finding-description {
-    font-size: 13px;
+    font-size: .9375rem;
     color: var(--color-text-2);
     line-height: 1.65;
     padding: 12px 0;
@@ -655,7 +655,7 @@
 .finding-section { margin-top: 12px; }
 
 .finding-section-title {
-    font-size: 10px;
+    font-size: .875rem;
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: .8px;
@@ -671,7 +671,7 @@
     border: 1px solid var(--color-border);
     border-radius: var(--r-pill);
     padding: 0 6px;
-    font-size: 10px;
+    font-size: .875rem;
     color: var(--color-text-2);
 }
 
@@ -684,7 +684,7 @@
 
 .finding-affected-list li {
     font-family: var(--font-mono);
-    font-size: 12px;
+    font-size: .875rem;
     color: var(--color-text-2);
     padding: 5px 10px;
     background: var(--color-bg-panel);
@@ -704,7 +704,7 @@
 .finding-section--remediation .finding-section-title { color: var(--color-brand); }
 
 .finding-remediation {
-    font-size: 13px;
+    font-size: .9375rem;
     color: var(--color-text-2);
     line-height: 1.65;
 }
@@ -730,7 +730,7 @@
     border: 1px solid color-mix(in srgb, var(--sapPositiveColor, #256f3a) 25%, transparent);
     border-left: 4px solid var(--color-success);
     border-radius: 0 var(--r-sm) var(--r-sm) 0;
-    font-size: 11px;
+    font-size: .875rem;
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: .6px;
@@ -743,7 +743,7 @@
     border-radius: var(--r-pill);
     padding: 1px 8px;
     font-family: var(--font-mono);
-    font-size: 11px;
+    font-size: .875rem;
     font-weight: 700;
 }
 
@@ -770,7 +770,7 @@
     cursor: pointer;
     user-select: none;
     list-style: none;
-    font-size: 11px;
+    font-size: .875rem;
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: .5px;
@@ -787,7 +787,7 @@
 
 .excluded-checks-toggle {
     margin-left: auto;
-    font-size: 9px;
+    font-size: .875rem;
     color: #9ca3af;
     transition: transform .18s ease;
 }
@@ -799,7 +799,7 @@
 .excluded-checks-body {
     margin: 0;
     padding: 0 14px 12px 36px;
-    font-size: 12px;
+    font-size: .875rem;
     line-height: 1.65;
     color: #4b5563;
 }
@@ -817,7 +817,7 @@
     border-left: 4px solid var(--color-brand);
     border-radius: var(--r-md);
     background: #EAF3FF;
-    font-size: 12px;
+    font-size: .875rem;
     line-height: 1.6;
     color: #1A4A7A;
 }
@@ -834,7 +834,7 @@
 }
 
 .disclaimer-title {
-    font-size: 13px;
+    font-size: .9375rem;
     font-weight: 700;
     color: #1A4A7A;
 }
@@ -842,13 +842,13 @@
 .disclaimer-list {
     margin: 0 0 0 26px;
     padding: 0;
-    font-size: 12px;
+    font-size: .875rem;
     line-height: 1.7;
     color: #1A4A7A;
 }
 
 .disclaimer-footer {
-    font-size: 12px;
+    font-size: .875rem;
     font-weight: 600;
     color: #1A4A7A;
     margin: 0;
@@ -879,13 +879,13 @@
 .unknown-section-hint {
     margin: 0 0 8px;
     padding: 0 18px;
-    font-size: 12px;
+    font-size: .875rem;
     color: var(--sapNeutralColor, #556b82);
 }
 
 .unknown-detail {
     margin-top: 6px;
-    font-size: 12px;
+    font-size: .875rem;
     color: var(--sapNeutralColor, #556b82);
 }
 
