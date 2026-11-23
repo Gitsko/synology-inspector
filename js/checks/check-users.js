@@ -14,9 +14,8 @@ function checkUsers(config, _tlsProfile, parseResult) {
     const users    = parseResult?.users || [];
 
     // ── Default admin account disabled ────────────────────────────────────────
-    // expire: -1 = active (never expires), 1 = disabled
     const adminUser   = users.find(u => u.name === 'admin' || u.uid === 1024);
-    const adminActive = adminUser ? adminUser.expire === -1 : false;
+    const adminActive = adminUser ? isAccountActive(adminUser) : false;
 
     if (!adminUser) {
         findings.push(unknownFinding('syn-admin-unknown', t('checkNameAdmin'), t('catUsers'),
@@ -58,7 +57,7 @@ function checkUsers(config, _tlsProfile, parseResult) {
             severity:    'high',
             status:      'fail',
             category:    t('catUsers'),
-            frameworks:  [fwRef('CIS', '4.10'), fwRef('NIST', 'AC-7'), fwRef('ISO', 'A.8.5'), fwRef('PCI', 'Req.8.3.4')],
+            frameworks:  [fwRef('CIS', '5.2'), fwRef('NIST', 'IA-5'), fwRef('ISO', 'A.5.17'), fwRef('PCI', 'Req.8.3.6')],
             affectedItems: [],
             remediation: t('checkPwdPolicyDisabledRemediation'),
         });
@@ -75,7 +74,7 @@ function checkUsers(config, _tlsProfile, parseResult) {
                 severity:    'medium',
                 status:      'fail',
                 category:    t('catUsers'),
-                frameworks:  [fwRef('CIS', '4.10'), fwRef('ISO', 'A.8.5'), fwRef('PCI', 'Req.8.3.4')],
+                frameworks:  [fwRef('CIS', '5.2'), fwRef('ISO', 'A.5.17'), fwRef('PCI', 'Req.8.3.6')],
                 affectedItems: [],
                 remediation: t('checkPwdLengthRemediation'),
             });
@@ -87,7 +86,7 @@ function checkUsers(config, _tlsProfile, parseResult) {
                 severity:    'info',
                 status:      'pass',
                 category:    t('catUsers'),
-                frameworks:  [fwRef('CIS', '4.10'), fwRef('ISO', 'A.8.5')],
+                frameworks:  [fwRef('CIS', '5.2'), fwRef('ISO', 'A.5.17')],
                 affectedItems: [],
                 remediation: '',
             });
@@ -102,7 +101,7 @@ function checkUsers(config, _tlsProfile, parseResult) {
                 severity:    'low',
                 status:      'fail',
                 category:    t('catUsers'),
-                frameworks:  [fwRef('NIST', 'AC-7'), fwRef('ISO', 'A.8.5')],
+                frameworks:  [fwRef('NIST', 'IA-5'), fwRef('ISO', 'A.5.17')],
                 affectedItems: [],
                 remediation: t('checkPwdSpecialRemediation'),
             });
@@ -114,7 +113,7 @@ function checkUsers(config, _tlsProfile, parseResult) {
                 severity:    'info',
                 status:      'pass',
                 category:    t('catUsers'),
-                frameworks:  [fwRef('ISO', 'A.8.5')],
+                frameworks:  [fwRef('ISO', 'A.5.17')],
                 affectedItems: [],
                 remediation: '',
             });
@@ -129,7 +128,7 @@ function checkUsers(config, _tlsProfile, parseResult) {
                 severity:    'low',
                 status:      'fail',
                 category:    t('catUsers'),
-                frameworks:  [fwRef('NIST', 'AC-7'), fwRef('ISO', 'A.8.5')],
+                frameworks:  [fwRef('NIST', 'IA-5'), fwRef('ISO', 'A.5.17')],
                 affectedItems: [],
                 remediation: t('checkPwdCommonRemediation'),
             });
@@ -141,7 +140,7 @@ function checkUsers(config, _tlsProfile, parseResult) {
                 severity:    'info',
                 status:      'pass',
                 category:    t('catUsers'),
-                frameworks:  [fwRef('ISO', 'A.8.5')],
+                frameworks:  [fwRef('ISO', 'A.5.17')],
                 affectedItems: [],
                 remediation: '',
             });

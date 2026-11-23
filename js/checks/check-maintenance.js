@@ -13,7 +13,7 @@ function checkMaintenance(config, _tlsProfile, parseResult) {
     // ── Auto config backup ────────────────────────────────────────────────────
     if (autoBackupConfigured === null) {
         findings.push(unknownFinding('syn-config-backup-unknown', t('checkNameConfigBackup'),
-            t('catMaintenance'), [fwRef('CIS', '12.2'), fwRef('NIST', 'CP-9')]));
+            t('catMaintenance'), [fwRef('CIS', '11.2'), fwRef('NIST', 'CP-9'), fwRef('ISO', 'A.8.13')]));
     } else if (!autoBackupConfigured) {
         findings.push({
             id:          'syn-no-config-backup',
@@ -22,7 +22,7 @@ function checkMaintenance(config, _tlsProfile, parseResult) {
             severity:    'medium',
             status:      'fail',
             category:    t('catMaintenance'),
-            frameworks:  [fwRef('CIS', '12.2'), fwRef('NIST', 'CP-9')],
+            frameworks:  [fwRef('CIS', '11.2'), fwRef('NIST', 'CP-9'), fwRef('ISO', 'A.8.13')],
             affectedItems: [],
             remediation: t('checkConfigBackupRemediation'),
         });
@@ -34,7 +34,7 @@ function checkMaintenance(config, _tlsProfile, parseResult) {
             severity:    'info',
             status:      'pass',
             category:    t('catMaintenance'),
-            frameworks:  [fwRef('CIS', '12.2')],
+            frameworks:  [fwRef('CIS', '11.2'), fwRef('NIST', 'CP-9')],
             affectedItems: [],
             remediation: '',
         });
@@ -53,7 +53,7 @@ function checkMaintenance(config, _tlsProfile, parseResult) {
             description: t('checkSMBSigningDesc'),
             severity:    'medium',
             status:      'fail',
-            category:    t('catMaintenance'),
+            category:    t('catProtocols'),
             frameworks:  [fwRef('CIS', '9.4'), fwRef('NIST', 'SC-8'), fwRef('ISO', 'A.8.24')],
             affectedItems: ['SMB'],
             remediation: t('checkSMBSigningRemediation'),
@@ -65,7 +65,7 @@ function checkMaintenance(config, _tlsProfile, parseResult) {
             description: '',
             severity:    'info',
             status:      'pass',
-            category:    t('catMaintenance'),
+            category:    t('catProtocols'),
             frameworks:  [fwRef('CIS', '9.4'), fwRef('NIST', 'SC-8')],
             affectedItems: [],
             remediation: '',

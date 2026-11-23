@@ -77,7 +77,7 @@ function checkProtocols(config, _tlsProfile) {
     const ftpOn     = config.get('FTP_isEnableFTP') === '1';
     const ftpAnonOn = config.get('FTP_isEnableAnon') === '1';
 
-    if (ftpAnonOn) {
+    if (ftpOn && ftpAnonOn) {
         findings.push({
             id:          'syn-ftp-anon',
             title:       t('checkFTPAnonFailTitle'),

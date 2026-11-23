@@ -72,6 +72,26 @@ function unknownFinding(id, name, category, frameworks) {
     };
 }
 
+// ── Account state ──────────────────────────────────────────────────────────────
+
+/**
+ * Whether a local DSM account can log in.
+ * confbkp_user_tb.expire: -1 = never expires, 1 = deactivated,
+ * >1 = expiry date in days since 1970-01-01 (account expires after that day).
+ *
+ * @param {{expire: number}} user
+ * @param {Date}             [now]
+ * @returns {boolean}
+ */
+function isAccountActive(user, now = new Date()) {
+    if (user.expire === 1) return false;
+    if (user.expire > 1) {
+        const todayDays = Math.floor(now.getTime() / 86400000);
+        return user.expire >= todayDays;
+    }
+    return true;
+}
+
 // ── Scoring ────────────────────────────────────────────────────────────────────
 
 const SEVERITY_PENALTY = {
