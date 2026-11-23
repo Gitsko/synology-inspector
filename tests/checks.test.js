@@ -23,6 +23,24 @@ test('isAccountActive interprets the expire column', () => {
     assert.equal(app.isAccountActive({ expire: 1 }), false);
     assert.equal(app.isAccountActive({ expire: today() + 30 }), true);
     assert.equal(app.isAccountActive({ expire: today() - 30 }), false);
+    for (const expire of [0, -2, null, undefined, NaN, 1.5]) {
+        assert.equal(app.isAccountActive({ expire }), null, String(expire));
+    }
+});
+
+test('account with an unrecognized expire value is unknown, not active', () => {
+    const app = loadApp();
+    const odd = runChecks(app, {}, { users: [
+        { name: 'admin', uid: 1024, expire: 0 },
+        { name: 'guest', uid: 1025, expire: null },
+        { name: 'alice', uid: 1026, expire: -1 },
+    ], adminMembers: ['admin', 'alice'] });
+    for (const id of ['syn-admin-unknown', 'syn-guest-unknown', 'syn-admins-unknown']) assert.ok(ids(odd).includes(id), id);
+
+    const users = ['a', 'b', 'c'].map((name, i) => ({ name, uid: 1030 + i, expire: -1 }));
+    users.push({ name: 'd', uid: 1040, expire: 0 });
+    const many = runChecks(app, {}, { users, adminMembers: ['a', 'b', 'c', 'd'] });
+    assert.equal(byId(many, 'syn-admins-many').status, 'fail');
 });
 
 test('missing data is reported as unknown, never as passed', () => {

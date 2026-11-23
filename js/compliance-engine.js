@@ -84,12 +84,14 @@ function unknownFinding(id, name, category, frameworks) {
  * @returns {boolean}
  */
 function isAccountActive(user, now = new Date()) {
-    if (user.expire === 1) return false;
-    if (user.expire > 1) {
+    const expire = user.expire;
+    if (expire === -1) return true;
+    if (expire === 1)  return false;
+    if (Number.isInteger(expire) && expire > 1) {
         const todayDays = Math.floor(now.getTime() / 86400000);
-        return user.expire >= todayDays;
+        return expire >= todayDays;
     }
-    return true;
+    return null;   // value not seen in DSM backups
 }
 
 // ── Scoring ────────────────────────────────────────────────────────────────────

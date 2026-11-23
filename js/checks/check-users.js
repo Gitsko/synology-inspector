@@ -17,9 +17,9 @@ function checkUsers(config, _tlsProfile, parseResult) {
 
     // ── Default admin account disabled ────────────────────────────────────────
     const adminUser   = users.find(u => u.name === 'admin' || u.uid === 1024);
-    const adminActive = adminUser ? isAccountActive(adminUser) : false;
+    const adminActive = adminUser ? isAccountActive(adminUser) : null;
 
-    if (!adminUser) {
+    if (adminActive === null) {
         findings.push(unknownFinding('syn-admin-unknown', t('checkNameAdmin'), t('catUsers'),
             [fwRef('CIS', '4.7'), fwRef('NIST', 'AC-2')]));
     } else if (adminActive) {
@@ -152,10 +152,11 @@ function checkUsers(config, _tlsProfile, parseResult) {
     // ── Guest account ─────────────────────────────────────────────────────────
     const guestFw = [fwRef('CIS', '4.7'), fwRef('NIST', 'AC-2'), fwRef('ISO', 'A.5.18')];
     const guest = users.find(u => u.name === 'guest');
-    if (!guest) {
+    const guestActive = guest ? isAccountActive(guest) : null;
+    if (guestActive === null) {
         findings.push(unknownFinding('syn-guest-unknown', t('checkNameGuest'), t('catUsers'), guestFw));
     } else {
-        if (isAccountActive(guest)) {
+        if (guestActive) {
             const guestShares = (parseResult?.sharePrivileges || [])
                 .filter(p => p.type === 'user' && p.name === 'guest' && (p.privilege === 'RW' || p.privilege === 'RO'))
                 .map(p => `${p.share} (${p.privilege})`);
@@ -193,11 +194,13 @@ function checkUsers(config, _tlsProfile, parseResult) {
     if (users.length === 0 || adminMembers.length === 0) {
         findings.push(unknownFinding('syn-admins-unknown', t('checkNameAdmins'), t('catUsers'), adminFw));
     } else {
-        const activeAdmins = adminMembers.filter(name => {
-            const u = users.find(x => x.name === name);
-            return u && isAccountActive(u);
-        });
-        if (activeAdmins.length === 0) {
+        const adminStates = adminMembers
+            .map(name => users.find(x => x.name === name))
+            .filter(Boolean)
+            .map(u => [u.name, isAccountActive(u)]);
+        const activeAdmins = adminStates.filter(([, active]) => active === true).map(([name]) => name);
+        const undetermined = adminStates.some(([, active]) => active === null);
+        if (activeAdmins.length === 0 || (undetermined && activeAdmins.length <= MAX_ADMINS)) {
             findings.push(unknownFinding('syn-admins-unknown', t('checkNameAdmins'), t('catUsers'), adminFw));
         } else if (activeAdmins.length > MAX_ADMINS) {
             findings.push({
