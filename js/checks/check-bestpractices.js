@@ -246,7 +246,9 @@ function checkBestPractices(config, _tlsProfile, parseResult) {
 
     // ── DSM update setting: no fully automatic updates ────────────────────────
     // 'notify' and 'hotfix-security' (security fixes only) both keep feature
-    // updates under manual control; any other value installs all updates.
+    // updates under manual control. The value DSM stores for "install all
+    // updates" is not verified, so other values produce no finding here; the
+    // security check reports them as unknown.
     let updateType = null;
     try {
         const raw = config.get('UPDATE_setting_v4');
@@ -254,32 +256,18 @@ function checkBestPractices(config, _tlsProfile, parseResult) {
         if (typeof type === 'string' && type !== '') updateType = type;
     } catch (_) {}
 
-    if (updateType !== null) {
-        if (updateType !== 'notify' && updateType !== 'hotfix-security') {
-            findings.push({
-                id:          'bp-update-auto',
-                title:       t('bpCheckUpdateNotifyFailTitle'),
-                description: t('bpCheckUpdateNotifyDesc'),
-                severity:    'medium',
-                status:      'fail',
-                category:    t('catBPUpdates'),
-                frameworks:  [],
-                affectedItems: [],
-                remediation: t('bpCheckUpdateNotifyRemediation'),
-            });
-        } else {
-            findings.push({
-                id:          'bp-update-notify-ok',
-                title:       t('bpCheckUpdateNotifyPassTitle'),
-                description: '',
-                severity:    'info',
-                status:      'pass',
-                category:    t('catBPUpdates'),
-                frameworks:  [],
-                affectedItems: [],
-                remediation: '',
-            });
-        }
+    if (updateType === 'notify' || updateType === 'hotfix-security') {
+        findings.push({
+            id:          'bp-update-notify-ok',
+            title:       t('bpCheckUpdateNotifyPassTitle'),
+            description: '',
+            severity:    'info',
+            status:      'pass',
+            category:    t('catBPUpdates'),
+            frameworks:  [],
+            affectedItems: [],
+            remediation: '',
+        });
     }
 
     // ── Recycle Bin cleanup task ──────────────────────────────────────────────
