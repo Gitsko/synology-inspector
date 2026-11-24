@@ -899,7 +899,7 @@
 }
 
 /* ── Small viewports / high zoom (WCAG 1.4.10 Reflow) ────────────────────────── */
-@media (max-width: 720px), (max-height: 560px) {
+@media (max-width: 60em), (max-height: 40em) {
     .results-shell,
     .compliance-view,
     .bestpractices-view { height: auto; overflow: visible; }

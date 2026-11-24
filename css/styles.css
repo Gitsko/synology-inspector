@@ -117,7 +117,8 @@ h1, h2, h3 { font-size: inherit; font-weight: inherit; }
 .context-bar {
     display: flex; align-items: center; min-height: var(--context-bar-h);
     background: var(--color-bg-panel); border-bottom: 1px solid var(--color-border);
-    padding: 0 20px; font-size: .875rem; flex-shrink: 0;
+    padding: 4px 20px; font-size: .875rem; flex-shrink: 0;
+    flex-wrap: wrap; row-gap: 4px;
 }
 .context-bar--hidden { display: none; }
 .context-item {
@@ -326,16 +327,18 @@ h1, h2, h3 { font-size: inherit; font-weight: inherit; }
 
 /* ── Small viewports / high zoom (WCAG 1.4.10 Reflow) ───────────────────── */
 /* The page scrolls as a whole instead of the fixed app-shell layout */
-@media (max-width: 720px), (max-height: 560px) {
+@media (max-width: 60em), (max-height: 40em) {
     html, body { height: auto; }
     body { overflow: visible; }
     #app { overflow: visible; }
-    .header { height: auto; flex-wrap: wrap; }
+    .header { flex-wrap: wrap; }
+    .header-product { flex-wrap: wrap; }
+    .header-title { white-space: normal; }
     .header-left { padding: 8px 12px; border-right: none; flex-wrap: wrap; row-gap: 4px; }
     .header-right { margin-left: 0; flex-wrap: wrap; }
     .about-btn { padding: 8px 12px; }
     .lang-toggle { padding: 8px 12px; }
-    .context-bar { height: auto; flex-wrap: wrap; row-gap: 4px; padding: 8px 12px; }
+    .context-bar { padding: 8px 12px; }
     .context-item { padding: 0 12px 0 0; border-right: none; min-width: 0; }
     .context-value { max-width: 100%; white-space: normal; overflow-wrap: anywhere; }
     .context-actions { margin-left: 0; padding-left: 0; display: flex; flex-wrap: wrap; }
