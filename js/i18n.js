@@ -345,6 +345,11 @@
             checkNameNotify:          'Notifications',
             checkNameAccountProtection: 'Account protection',
             checkNameAutoBlock:      'Auto block',
+            checkNameHTTPSRedirect:  'HTTPS redirect',
+            checkNameHSTS:           'HSTS',
+            checkNamePwdPolicy:      'Password strength rules',
+            checkNameSMBSigning:     'SMB signing',
+            checkNameFTPTLS:         'FTP encryption',
             affectedItems:           'Affected items',
             howToFix:                'How to fix',
 
@@ -447,6 +452,11 @@
             checkNameNotify:          'Benachrichtigungen',
             checkNameAccountProtection: 'Kontoschutz',
             checkNameAutoBlock:      'Automatische Kontosperrung',
+            checkNameHTTPSRedirect:  'HTTPS-Weiterleitung',
+            checkNameHSTS:           'HSTS',
+            checkNamePwdPolicy:      'Regeln für Passwortstärke',
+            checkNameSMBSigning:     'SMB-Signierung',
+            checkNameFTPTLS:         'FTP-Verschlüsselung',
             affectedItems:           'Betroffene Elemente',
             howToFix:                'So beheben',
 

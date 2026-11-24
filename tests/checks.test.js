@@ -49,9 +49,10 @@ test('missing data is reported as unknown, never as passed', () => {
     const unknown = [...findings.filter(f => f.status === 'unknown').map(f => f.id)].sort();
     assert.deepEqual(unknown, [
         'syn-account-protection-unknown', 'syn-admin-unknown', 'syn-admins-unknown', 'syn-advisories-unknown', 'syn-autoblock-unknown', 'syn-config-backup-unknown', 'syn-csrf-unknown',
-        'syn-dos-unknown', 'syn-firewall-unknown', 'syn-guest-unknown', 'syn-iframe-unknown',
-        'syn-ip-check-unknown', 'syn-notify-unknown', 'syn-ntlmv1-unknown', 'syn-qc-unknown', 'syn-security-updates-unknown',
-        'syn-services-unknown', 'syn-smb1-unknown', 'syn-ssh-unknown', 'syn-telnet-unknown', 'syn-tls-unknown',
+        'syn-dos-unknown', 'syn-firewall-unknown', 'syn-guest-unknown', 'syn-hsts-unknown', 'syn-https-redirect-unknown',
+        'syn-iframe-unknown', 'syn-ip-check-unknown', 'syn-notify-unknown', 'syn-ntlmv1-unknown', 'syn-pwd-policy-unknown',
+        'syn-qc-unknown', 'syn-security-updates-unknown', 'syn-services-unknown', 'syn-smb-signing-unknown',
+        'syn-smb1-unknown', 'syn-ssh-unknown', 'syn-telnet-unknown', 'syn-tls-unknown',
     ]);
 });
 
@@ -393,3 +394,105 @@ test('account protection: enabled passes, disabled fails, missing is unknown', (
     assert.deepEqual(find(false), ['syn-account-protection-off:fail:low']);
     assert.deepEqual(find(null), ['syn-account-protection-unknown:unknown:info']);
 });
+
+test('unknown findings cite every framework their pass and fail findings cite', () => {
+    const app = loadApp();
+    const sec = data => JSON.stringify([{ api: 'SYNO.Core.Security.DSM', result: { data } }]);
+    const embed = data => JSON.stringify([{ api: 'SYNO.Core.Security.DSM.Embed', result: { data } }]);
+    const admin = expire => ({ users: [{ name: 'admin', uid: 1024, expire }] });
+    // unknown id -> configs that produce its siblings
+    const cases = {
+        'syn-admin-unknown':          [[{}, admin(-1)], [{}, admin(1)]],
+        'syn-autoblock-unknown':      [[{ AutoBlock_attempts: '10', AutoBlock_attemptMin: '5' }], [{ AutoBlock_attempts: '0', AutoBlock_attemptMin: '5' }]],
+        'syn-ssh-unknown':            [[{ Terminal_isEnableSSH: '1' }], [{ Terminal_isEnableSSH: '0' }]],
+        'syn-telnet-unknown':         [[{ Terminal_isEnableTelnet: '1' }], [{ Terminal_isEnableTelnet: '0' }]],
+        'syn-smb1-unknown':           [[{ CIFS_Min_Protocol: 'NT1' }], [{ CIFS_Min_Protocol: 'SMB2' }]],
+        'syn-ntlmv1-unknown':         [[{ CIFS_Enable_NTLMv1_Auth: '1' }], [{ CIFS_Enable_NTLMv1_Auth: '0' }]],
+        'syn-dos-unknown':            [[{ DOS_config: JSON.stringify({ e: 'dos_protect_enable=yes' }) }], [{ DOS_config: JSON.stringify({ e: 'dos_protect_enable=no' }) }]],
+        'syn-csrf-unknown':           [[{ SECURITY_: sec({ enable_csrf_protection: true }) }], [{ SECURITY_: sec({ enable_csrf_protection: false }) }]],
+        'syn-iframe-unknown':         [[{ SECURITY_: embed({ enable_block: true }) }], [{ SECURITY_: embed({ enable_block: false }) }]],
+        'syn-https-redirect-unknown': [[{ w3_redirectHTTPS: 'yes' }], [{ w3_redirectHTTPS: 'no' }]],
+        'syn-hsts-unknown':           [[{ w3_runsyshsts: 'yes' }], [{ w3_runsyshsts: 'no' }]],
+        'syn-pwd-policy-unknown':     [[{ Passwdstrength_isApplyPasswdRule: '0' }]],
+        'syn-smb-signing-unknown':    [[{ CIFS_Enable_Server_Signing: '2' }], [{ CIFS_Enable_Server_Signing: '0' }]],
+        'syn-ftp-tls-unknown':        [[{ FTP_isEnableFTP: '1', FTP_isEnableSSL: '2' }], [{ FTP_isEnableFTP: '1', FTP_isEnableSSL: '1' }]],
+    };
+    const unknownConfigs = { 'syn-ftp-tls-unknown': { FTP_isEnableFTP: '1' } };
+    const siblingPattern = { 'syn-smb-signing-unknown': /^syn-smb-(no-)?signing/, 'syn-ftp-tls-unknown': /^syn-ftp-(no-tls|tls-on)$/ };
+    const isSibling = (id, f) => f.status !== 'unknown'
+        && (siblingPattern[id] ? siblingPattern[id].test(f.id) : f.id.startsWith(id.replace(/-unknown$/, '-')));
+    for (const [id, siblings] of Object.entries(cases)) {
+        const unknown = byId(runChecks(app, unknownConfigs[id] || {}, { autoBackupConfigured: null }), id);
+        assert.ok(unknown, `${id} must be produced without data`);
+        const cited = new Set(unknown.frameworks.map(r => r.label));
+        for (const [cfg, extras] of siblings) {
+            const sibling = runChecks(app, cfg, extras).find(f => isSibling(id, f));
+            assert.ok(sibling, `${id}: sibling for ${JSON.stringify(cfg)}`);
+            for (const r of sibling.frameworks) assert.ok(cited.has(r.label), `${id} must cite ${r.label} (from ${sibling.id})`);
+        }
+    }
+});
+
+test('HTTPS redirect, HSTS, password rules, SMB signing: only explicit values decide', () => {
+    const app = loadApp();
+    const status = (cfg, idPrefix) => [...runChecks(app, cfg)].filter(f => f.id.startsWith(idPrefix)).map(f => `${f.id}:${f.status}`);
+    assert.deepEqual(status({ w3_redirectHTTPS: 'maybe' }, 'syn-https-redirect'), ['syn-https-redirect-unknown:unknown']);
+    assert.deepEqual(status({ w3_runsyshsts: '1' }, 'syn-hsts'), ['syn-hsts-unknown:unknown']);
+    assert.equal(status({ w3_redirectHTTPS: 'no' }, 'syn-https-redirect')[0].endsWith(':fail'), true);
+    assert.equal(status({ w3_runsyshsts: 'yes' }, 'syn-hsts')[0].endsWith(':pass'), true);
+    assert.deepEqual(status({ Passwdstrength_isApplyPasswdRule: 'yes' }, 'syn-pwd'), ['syn-pwd-policy-unknown:unknown']);
+    assert.deepEqual(status({ Passwdstrength_isApplyPasswdRule: '0' }, 'syn-pwd'), ['syn-pwd-policy-disabled:fail']);
+    assert.deepEqual(status({ CIFS_Enable_Server_Signing: '3' }, 'syn-smb-signing'), ['syn-smb-signing-unknown:unknown']);
+    assert.deepEqual(status({ CIFS_Enable_Server_Signing: '1' }, 'syn-smb-no-signing'), ['syn-smb-no-signing:fail']);
+    assert.equal(status({ CIFS_Enable_Server_Signing: '2' }, 'syn-smb-signing')[0].endsWith(':pass'), true);
+});
+
+test('FTP passes only with required TLS; an unknown TLS value is unknown', () => {
+    const app = loadApp();
+    const ftp = ssl => [...runChecks(app, { FTP_isEnableFTP: '1', FTP_isEnableSSL: ssl })]
+        .filter(f => /^syn-ftp-(no-tls|tls-)/.test(f.id)).map(f => f.status);
+    assert.deepEqual(ftp('2'), ['pass']);
+    assert.deepEqual(ftp('1'), ['fail']);
+    assert.deepEqual(ftp('0'), ['fail']);
+    assert.deepEqual(ftp('x'), ['unknown']);
+    assert.deepEqual(ftp(undefined), ['unknown']);
+    assert.ok(!ids(runChecks(app, { FTP_isEnableFTP: '0' })).includes('syn-ftp-tls-unknown'));
+});
+
+test('DoS config that is not an object of INI texts is unknown', () => {
+    const app = loadApp();
+    for (const raw of ['[]', '["dos_protect_enable=yes"]', JSON.stringify({ e: 1 }), '{not json']) {
+        assert.ok(ids(runChecks(app, { DOS_config: raw })).includes('syn-dos-unknown'), raw);
+    }
+    // A non-text entry does not hide an unprotected interface listed after it
+    const later = JSON.stringify({ eth0: 1, eth1: 'dos_protect_enable=no' });
+    assert.ok(ids(runChecks(app, { DOS_config: later })).includes('syn-dos-incomplete'));
+});
+
+test('TLS directives are read after comments, also inline, and need a semicolon', () => {
+    const app = loadApp();
+    const run = text => ids(runChecks(app, {}, { tlsConfigs: [{ name: 'ConfigBkp/tls_profile/config/dsm.conf', text }] }));
+    assert.ok(run('server { ssl_protocols TLSv1.2 TLSv1.3; }\n').includes('syn-tls-ok'));
+    assert.ok(run('listen 443; ssl_protocols TLSv1;\n').includes('syn-tls-weak'));
+    assert.ok(run('# ssl_protocols TLSv1;\nssl_protocols TLSv1.2;\n').includes('syn-tls-ok'));
+    assert.ok(run('ssl_protocols TLSv1.2\n').includes('syn-tls-unknown'));
+    assert.ok(run('ssl_protocols TLSv1.2; ssl_protocols TLSv1.3\n').includes('syn-tls-unknown'));
+});
+
+test('a stored webhook value that is not text is unknown, not off', () => {
+    const app = loadApp();
+    const off = { NOTIFY_smtp_mail_enabled: '0', NOTIFY_pushservice_mail_enabled: '0',
+        NOTIFY_pushservice_mobile_enabled: '0', NOTIFY_sms_enable: '0' };
+    assert.ok(ids(runChecks(app, { ...off, NOTIFY_webhookconf: new Uint8Array([1]) })).includes('syn-notify-unknown'));
+    assert.ok(ids(runChecks(app, { ...off, NOTIFY_webhookconf: null })).includes('syn-notify-unknown'));
+});
+
+test('CSRF and iframe settings need a boolean', () => {
+    const app = loadApp();
+    const sec = data => ({ SECURITY_: JSON.stringify([{ api: 'SYNO.Core.Security.DSM', result: { data } },
+        { api: 'SYNO.Core.Security.DSM.Embed', result: { data } }]) });
+    const found = ids(runChecks(app, sec({ enable_csrf_protection: 'true', enable_block: 1 })));
+    assert.ok(found.includes('syn-csrf-unknown'));
+    assert.ok(found.includes('syn-iframe-unknown'));
+});
+

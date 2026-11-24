@@ -20,7 +20,7 @@ function checkAuth(config, _tlsProfile, parseResult) {
 
     if (!autoBlockRaw.every(v => /^\d{1,6}$/.test(v ?? ''))) {
         findings.push(unknownFinding('syn-autoblock-unknown', t('checkNameAutoBlock'), t('catAuth'),
-            [fwRef('CIS', '4.10'), fwRef('NIST', 'AC-7'), fwRef('ISO', 'A.8.5')]));
+            [fwRef('CIS', '4.10'), fwRef('NIST', 'AC-7'), fwRef('ISO', 'A.8.5'), fwRef('PCI', 'Req.8.3.4')]));
     } else if (autoBlockAttempts > 0 && autoBlockMinutes > 0) {
         findings.push({
             id:          'syn-autoblock-on',
@@ -48,10 +48,14 @@ function checkAuth(config, _tlsProfile, parseResult) {
     }
 
     // ── HTTPS redirect ────────────────────────────────────────────────────────
-    // w3_redirectHTTPS = 'yes' means DSM automatically redirects HTTP → HTTPS.
+    // w3_redirectHTTPS = 'yes' means DSM automatically redirects HTTP → HTTPS,
+    // 'no' means it does not; any other value cannot be evaluated.
     const httpsRedirect = config.get('w3_redirectHTTPS');
 
-    if (httpsRedirect === 'yes') {
+    if (httpsRedirect !== 'yes' && httpsRedirect !== 'no') {
+        findings.push(unknownFinding('syn-https-redirect-unknown', t('checkNameHTTPSRedirect'), t('catAuth'),
+            [fwRef('CIS', '9.5'), fwRef('NIST', 'SC-8'), fwRef('ISO', 'A.8.24'), fwRef('PCI', 'Req.4.2.1')]));
+    } else if (httpsRedirect === 'yes') {
         findings.push({
             id:          'syn-https-redirect-on',
             title:       t('checkHTTPSRedirectPassTitle'),
@@ -78,10 +82,13 @@ function checkAuth(config, _tlsProfile, parseResult) {
     }
 
     // ── HSTS ─────────────────────────────────────────────────────────────────
-    // w3_runsyshsts = 'yes' means HTTP Strict Transport Security is active.
+    // w3_runsyshsts = 'yes' means HTTP Strict Transport Security is active, 'no' that it is off.
     const hsts = config.get('w3_runsyshsts');
 
-    if (hsts === 'yes') {
+    if (hsts !== 'yes' && hsts !== 'no') {
+        findings.push(unknownFinding('syn-hsts-unknown', t('checkNameHSTS'), t('catAuth'),
+            [fwRef('CIS', '9.5'), fwRef('NIST', 'SC-8'), fwRef('ISO', 'A.8.24')]));
+    } else if (hsts === 'yes') {
         findings.push({
             id:          'syn-hsts-on',
             title:       t('checkHSTSPassTitle'),

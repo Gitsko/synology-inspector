@@ -25,7 +25,7 @@ function parseDsmSecurityBlob(config) {
 
     try {
         const apiResponses = JSON.parse(securityRaw);
-        for (const apiResponse of apiResponses) {
+        for (const apiResponse of Array.isArray(apiResponses) ? apiResponses : []) {
             if (apiResponse.api === 'SYNO.Core.Security.DSM') {
                 dsmSecurity = apiResponse.result?.data ?? null;
             } else if (apiResponse.api === 'SYNO.Core.Security.DSM.Embed') {
@@ -42,12 +42,11 @@ function checkWebSecurity(config, _tlsProfile) {
     const { dsmSecurity, dsmEmbedSecurity } = parseDsmSecurityBlob(config);
 
     // ── CSRF protection ───────────────────────────────────────────────────────
-    if (dsmSecurity === null) {
+    const csrfEnabled = dsmSecurity?.enable_csrf_protection;
+    if (typeof csrfEnabled !== 'boolean') {
         findings.push(unknownFinding('syn-csrf-unknown', t('checkNameCSRF'), t('catAuth'),
-            [fwRef('CIS', '16.6'), fwRef('NIST', 'SI-10')]));
+            [fwRef('CIS', '16.6'), fwRef('NIST', 'SI-10'), fwRef('ISO', 'A.8.26')]));
     } else {
-        const csrfEnabled = dsmSecurity.enable_csrf_protection === true;
-
         if (csrfEnabled) {
             findings.push({
                 id:          'syn-csrf-on',
@@ -76,12 +75,11 @@ function checkWebSecurity(config, _tlsProfile) {
     }
 
     // ── iFrame embedding ──────────────────────────────────────────────────────
-    if (dsmEmbedSecurity === null) {
+    const iframeBlocked = dsmEmbedSecurity?.enable_block;
+    if (typeof iframeBlocked !== 'boolean') {
         findings.push(unknownFinding('syn-iframe-unknown', t('checkNameIFrame'), t('catAuth'),
-            [fwRef('CIS', '16.6'), fwRef('NIST', 'SI-10')]));
+            [fwRef('CIS', '16.6'), fwRef('NIST', 'SI-10'), fwRef('ISO', 'A.8.26')]));
     } else {
-        const iframeBlocked = dsmEmbedSecurity.enable_block === true;
-
         if (iframeBlocked) {
             findings.push({
                 id:          'syn-iframe-blocked',

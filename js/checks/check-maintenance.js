@@ -96,8 +96,11 @@ function checkMaintenance(config, _tlsProfile, parseResult) {
     ];
     const notifyFw = [fwRef('NIST', 'SI-4'), fwRef('ISO', 'A.8.16'), fwRef('NIS2', 'Art.21(b)')];
     const notifyValues = NOTIFY_CHANNELS.map(key => config.get(key));
-    const webhookConf  = (config.get('NOTIFY_webhookconf') ?? '').trim();
-    const hasWebhook   = webhookConf !== '' && webhookConf !== 'null';
+    const webhookRaw   = config.get('NOTIFY_webhookconf');
+    // A stored non-text value (e.g. a BLOB) cannot be read as a webhook list
+    const webhookOdd   = config.has('NOTIFY_webhookconf') && typeof webhookRaw !== 'string';
+    const webhookConf  = typeof webhookRaw === 'string' ? webhookRaw.trim() : '';
+    const hasWebhook   = webhookOdd || (webhookConf !== '' && webhookConf !== 'null');
 
     if (notifyValues.includes('1')) {
         findings.push({
@@ -133,7 +136,11 @@ function checkMaintenance(config, _tlsProfile, parseResult) {
     //   '1' = "Client defined"                                                → FAIL
     //   '2' = "Force" (all clients must sign)                                 → PASS
     // Synology Security Advisor flags values 0 and 1 as medium-severity.
-    if (config.get('CIFS_Enable_Server_Signing') !== '2') {
+    const smbSigning = config.get('CIFS_Enable_Server_Signing');
+    if (!['0', '1', '2'].includes(smbSigning)) {
+        findings.push(unknownFinding('syn-smb-signing-unknown', t('checkNameSMBSigning'), t('catProtocols'),
+            [fwRef('CIS', '9.4'), fwRef('NIST', 'SC-8'), fwRef('ISO', 'A.8.24')]));
+    } else if (smbSigning !== '2') {
         findings.push({
             id:          'syn-smb-no-signing',
             title:       t('checkSMBSigningFailTitle'),

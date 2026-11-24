@@ -28,13 +28,18 @@ function findWeakTlsServices(tlsConfigs) {
     for (const { name, text } of tlsConfigs || []) {
         const base = name.split('/').pop();
         if (!base.endsWith('.conf') || base.startsWith('temp-')) continue;
-        const directives = [...text.matchAll(/^\s*ssl_protocols\s+([^;]+);/gm)];
-        if (!directives.length) continue;
+        // nginx allows several directives per line; comments run to the end of the line
+        const active = text.replace(/#.*$/gm, '');
+        const mentions = active.match(/\bssl_protocols\b/g) || [];
+        if (!mentions.length) continue;
         evaluated++;
+        const directives = [...active.matchAll(/(?:^|[;{}\s])ssl_protocols\s+([^;{}]+);/g)];
         const protocols = directives.flatMap(m => m[1].trim().split(/\s+/));
         const bad = [...new Set(protocols.filter(p => WEAK_TLS_PROTOCOLS.includes(p)))];
         if (bad.length) weak.push(`${base.slice(0, -5)} (${bad.join(', ')})`);
-        else if (protocols.some(p => !KNOWN_TLS_PROTOCOLS.includes(p))) unclear++;
+        // A directive the regex could not read (e.g. no closing semicolon) is unclear
+        else if (directives.length !== mentions.length
+            || protocols.some(p => !KNOWN_TLS_PROTOCOLS.includes(p))) unclear++;
     }
     return { evaluated, weak, unclear };
 }
@@ -52,7 +57,7 @@ function checkProtocols(config, _tlsProfile, parseResult) {
 
     if (!smb1On && !smb2Plus) {
         findings.push(unknownFinding('syn-smb1-unknown', t('checkNameSMBMinProto'), t('catProtocols'),
-            [fwRef('CIS', '9.4'), fwRef('NIST', 'CM-7')]));
+            [fwRef('CIS', '9.4'), fwRef('NIST', 'CM-7'), fwRef('ISO', 'A.8.20'), fwRef('PCI', 'Req.12.3.3')]));
     } else if (smb1On) {
         findings.push({
             id:          'syn-smb1-enabled',
@@ -83,7 +88,7 @@ function checkProtocols(config, _tlsProfile, parseResult) {
     const ntlmv1Val = config.get('CIFS_Enable_NTLMv1_Auth');
     if (ntlmv1Val !== '0' && ntlmv1Val !== '1') {
         findings.push(unknownFinding('syn-ntlmv1-unknown', t('checkNameNTLMv1'), t('catProtocols'),
-            [fwRef('CIS', '9.4'), fwRef('NIST', 'IA-3')]));
+            [fwRef('CIS', '9.4'), fwRef('NIST', 'IA-3'), fwRef('ISO', 'A.8.20'), fwRef('PCI', 'Req.12.3.3')]));
     } else if (ntlmv1Val === '1') {
         findings.push({
             id:          'syn-ntlmv1-enabled',
@@ -129,11 +134,14 @@ function checkProtocols(config, _tlsProfile, parseResult) {
     }
 
     // ── FTP without TLS ───────────────────────────────────────────────────────
-    // FTP_isEnableSSL: '0' = disabled, '1' = optional, '2' = required
-    const ftpSslVal = parseInt(config.get('FTP_isEnableSSL') || '0', 10);
-    const ftpSslOn  = ftpSslVal >= 1;
+    // FTP_isEnableSSL: '0' = disabled, '1' = optional, '2' = required.
+    // Optional TLS still lets clients log in unencrypted, so only '2' passes.
+    const ftpFw     = [fwRef('CIS', '9.2'), fwRef('NIST', 'SC-8'), fwRef('ISO', 'A.8.24')];
+    const ftpSslVal = config.get('FTP_isEnableSSL');
 
-    if (ftpOn && !ftpSslOn) {
+    if (ftpOn && !['0', '1', '2'].includes(ftpSslVal)) {
+        findings.push(unknownFinding('syn-ftp-tls-unknown', t('checkNameFTPTLS'), t('catProtocols'), ftpFw));
+    } else if (ftpOn && ftpSslVal !== '2') {
         findings.push({
             id:          'syn-ftp-no-tls',
             title:       t('checkFTPTLSFailTitle'),
@@ -141,11 +149,11 @@ function checkProtocols(config, _tlsProfile, parseResult) {
             severity:    'medium',
             status:      'fail',
             category:    t('catProtocols'),
-            frameworks:  [fwRef('CIS', '9.2'), fwRef('NIST', 'SC-8'), fwRef('ISO', 'A.8.24')],
+            frameworks:  ftpFw,
             affectedItems: ['FTP (unencrypted)'],
             remediation: t('checkFTPTLSRemediation'),
         });
-    } else if (ftpOn && ftpSslOn) {
+    } else if (ftpOn) {
         findings.push({
             id:          'syn-ftp-tls-on',
             title:       t('checkFTPTLSPassTitle'),
@@ -153,7 +161,7 @@ function checkProtocols(config, _tlsProfile, parseResult) {
             severity:    'info',
             status:      'pass',
             category:    t('catProtocols'),
-            frameworks:  [fwRef('CIS', '9.2'), fwRef('NIST', 'SC-8'), fwRef('ISO', 'A.8.24')],
+            frameworks:  ftpFw,
             affectedItems: [],
             remediation: '',
         });

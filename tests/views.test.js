@@ -47,7 +47,9 @@ test('filter controls expose their state instead of being disabled', () => {
 });
 
 test('framework chips name their finding count for screen readers', () => {
-    const { app, findings } = setup();
+    const app = loadViews(loadApp());
+    const findings = runChecks(app, { CIFS_Min_Protocol: 'SMB1', w3_redirectHTTPS: 'no', w3_runsyshsts: 'no',
+        Passwdstrength_isApplyPasswdRule: '0', CIFS_Enable_Server_Signing: '0' });
     const html = app.renderComplianceView(findings);
     assert.match(html, /<span class="fw-chip-count" aria-hidden="true">5<\/span><span class="visually-hidden">: 5 issues<\/span>/);
     assert.equal(app.findingCountText(1), '1 issue');

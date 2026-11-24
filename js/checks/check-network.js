@@ -21,24 +21,28 @@ function checkNetwork(config, _tlsProfile) {
         try {
             const dosConfig = JSON.parse(dosConfigRaw);
             dosConfigAvailable = dosConfig !== null && typeof dosConfig === 'object'
-                && Object.keys(dosConfig).length > 0;
-            for (const [confFilePath, iniContent] of Object.entries(dosConfig)) {
+                && !Array.isArray(dosConfig) && Object.keys(dosConfig).length > 0;
+            for (const [confFilePath, iniContent] of dosConfigAvailable ? Object.entries(dosConfig) : []) {
+                // Each value is the text of one INI file
+                if (typeof iniContent !== 'string') { dosUnclear = true; continue; }
                 const interfaceName = confFilePath
                     .replace('/etc/fw_security/', '')
                     .replace('.conf', '');
                 // The last active (uncommented) directive counts. Only a bare or
                 // fully quoted yes/no is understood; anything else is unclear.
-                const last = [...String(iniContent).matchAll(/^[ \t]*dos_protect_enable[ \t]*=(.*)$/gim)].at(-1);
+                const last = [...iniContent.matchAll(/^[ \t]*dos_protect_enable[ \t]*=(.*)$/gim)].at(-1);
                 const value = last ? last[1].trim().match(/^("?)(yes|no)\1$/i)?.[2].toLowerCase() : 'no';
                 if (value === 'no') unprotectedInterfaces.push(interfaceName);
                 else if (value !== 'yes') dosUnclear = true;
             }
-        } catch (_) {}
+        } catch (_) {
+            dosUnclear = true;
+        }
     }
 
     if (!dosConfigAvailable || (dosUnclear && unprotectedInterfaces.length === 0)) {
         findings.push(unknownFinding('syn-dos-unknown', t('checkNameDoS'), t('catNetwork'),
-            [fwRef('NIST', 'SC-5'), fwRef('ISO', 'A.8.20')]));
+            [fwRef('NIST', 'SC-5'), fwRef('ISO', 'A.8.20'), fwRef('NIS2', 'Art.21(e)')]));
     } else {
         if (unprotectedInterfaces.length === 0) {
             findings.push({
