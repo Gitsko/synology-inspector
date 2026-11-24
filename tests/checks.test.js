@@ -175,6 +175,7 @@ test('update settings: security check and best practice agree on hotfix-security
     assert.deepEqual(run('hotfix-security'), ['bp-update-notify-ok:pass', 'syn-security-updates-auto:pass']);
     // The value for "install all updates" is not verified: unknown, no best practice finding
     assert.deepEqual(run('all'), ['syn-security-updates-unknown:unknown']);
+    assert.deepEqual(run('auto'), ['syn-security-updates-unknown:unknown']);
 });
 
 test('non-string update type is unknown, not a pass', () => {
