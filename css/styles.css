@@ -250,7 +250,7 @@ h1, h2, h3 { font-size: inherit; font-weight: inherit; }
 
 /* ── About content (inside modal) ───────────────────────────────────────── */
 .about-header {
-    display: flex; align-items: center; gap: 12px; margin-bottom: 14px;
+    display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-bottom: 14px;
 }
 .about-logo {
     height: 28px; width: auto; flex-shrink: 0;
@@ -334,12 +334,16 @@ h1, h2, h3 { font-size: inherit; font-weight: inherit; }
     .header { flex-wrap: wrap; }
     .header-product { flex-wrap: wrap; }
     .header-title { white-space: normal; }
+    .context-value { max-width: 100%; white-space: normal; overflow-wrap: anywhere; }
+}
+
+/* Narrow viewports only: short wide windows keep the right-aligned controls */
+@media (max-width: 60em) {
     .header-left { padding: 8px 12px; border-right: none; flex-wrap: wrap; row-gap: 4px; }
     .header-right { margin-left: 0; flex-wrap: wrap; }
     .about-btn { padding: 8px 12px; }
     .lang-toggle { padding: 8px 12px; }
     .context-bar { padding: 8px 12px; }
     .context-item { padding: 0 12px 0 0; border-right: none; min-width: 0; }
-    .context-value { max-width: 100%; white-space: normal; overflow-wrap: anywhere; }
     .context-actions { margin-left: 0; padding-left: 0; display: flex; flex-wrap: wrap; }
 }
