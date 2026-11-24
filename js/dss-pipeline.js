@@ -28,7 +28,8 @@
  *   users:                Array                 local user accounts { name, uid, expire }
  *   adminMembers:         string[]              members of the administrators group
  *   sharePrivileges:      Array                 explicit share permissions { share, type, name, privilege }
- *   schedulerTasks:       Array                 scheduler tasks { app, state, name }
+ *   schedulerTasks:       Array | null          scheduler tasks { app, state, name },
+ *                                               null if a task row cannot be read
  *   autoBackupConfigured: boolean | null        true if auto config backup is configured,
  *                                               null if the backup does not contain the state
  *   accountProtectionEnabled: boolean | null    DSM account protection switch, null if unknown

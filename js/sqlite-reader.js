@@ -339,7 +339,9 @@ function buildSynoConfigMap(buffer) {
  * are themselves JSON strings (e.g. '"SYNO.SDS.TaskScheduler.Recycle"\n').
  *
  * @param {ArrayBuffer|Uint8Array} buffer  Raw SQLite 3 database bytes
- * @returns {{ users, adminMembers, sharePrivileges, schedulerTasks, autoBackupConfigured: boolean|null,
+ * schedulerTasks is null when a task row cannot be read.
+ *
+ * @returns {{ users, adminMembers, sharePrivileges, schedulerTasks: Array|null, autoBackupConfigured: boolean|null,
  *             accountProtectionEnabled: boolean|null, hasBtrfs }}
  */
 function buildSynoExtras(buffer) {
@@ -369,8 +371,9 @@ function buildSynoExtras(buffer) {
         if (typeof v !== 'string') return '';
         try { return JSON.parse(v.trim()); } catch (_) { return v.trim(); }
     };
+    let schedUnreadable = false;
     for (const row of schedRows) {
-        if (typeof row[1] !== 'string') continue;
+        if (typeof row[1] !== 'string') { schedUnreadable = true; continue; }
         try {
             const outer = JSON.parse(row[1]);
             schedulerTasks.push({
@@ -378,7 +381,9 @@ function buildSynoExtras(buffer) {
                 state: decodeInner(outer['state']),
                 name:  decodeInner(outer['name']),
             });
-        } catch (_) {}
+        } catch (_) {
+            schedUnreadable = true;
+        }
     }
 
     // ── Auto config backup ───────────────────────────────────────────────────────
@@ -406,6 +411,6 @@ function buildSynoExtras(buffer) {
     const volRows  = readSQLiteTable(buffer, 'confbkp_volume_tb');
     const hasBtrfs = volRows.some(r => Number(r[2]) === 3);
 
-    return { users, adminMembers, sharePrivileges, schedulerTasks, autoBackupConfigured,
+    return { users, adminMembers, sharePrivileges, schedulerTasks: schedUnreadable ? null : schedulerTasks, autoBackupConfigured,
         accountProtectionEnabled, hasBtrfs };
 }

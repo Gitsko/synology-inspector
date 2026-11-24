@@ -176,6 +176,21 @@ test('conflicting SmartBlock_0 rows leave account protection undetermined', () =
     assert.equal(state(' 1', '1'), true);
 });
 
+test('scheduler tasks are null when a task row cannot be read', () => {
+    const app = loadApp();
+    const tasks = (...values) => plain(app.buildSynoExtras(buildDb(db => {
+        db.exec('CREATE TABLE confbkp_scheduler_table (id INTEGER, value)');
+        const ins = db.prepare('INSERT INTO confbkp_scheduler_table VALUES (?, ?)');
+        values.forEach((v, i) => ins.run(i, v));
+    })).schedulerTasks);
+    const recycle = JSON.stringify({ app: '"SYNO.SDS.TaskScheduler.Recycle"', state: '"enabled"', name: '"Bin"' });
+    assert.deepEqual(tasks(recycle), [{ app: 'SYNO.SDS.TaskScheduler.Recycle', state: 'enabled', name: 'Bin' }]);
+    assert.equal(tasks(recycle, '{broken'), null);
+    assert.equal(tasks(recycle, 'null'), null);
+    assert.equal(tasks(recycle, 42), null);
+    assert.deepEqual(tasks(), []);
+});
+
 test('a record whose header promises more bytes than the payload holds is rejected', () => {
     const app = loadApp();
     // header: size 4, serial types 1 (1-byte int), 6 (8-byte int), 7 (float); body has only 2 bytes

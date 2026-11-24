@@ -173,7 +173,8 @@ test('update settings: security check and best practice agree on hotfix-security
     };
     assert.deepEqual(run('notify'), ['bp-update-notify-ok:pass', 'syn-security-updates-manual:fail']);
     assert.deepEqual(run('hotfix-security'), ['bp-update-notify-ok:pass', 'syn-security-updates-auto:pass']);
-    assert.deepEqual(run('all'), ['bp-update-auto:fail', 'syn-security-updates-unknown:unknown']);
+    // The value for "install all updates" is not verified: unknown, no best practice finding
+    assert.deepEqual(run('all'), ['syn-security-updates-unknown:unknown']);
 });
 
 test('non-string update type is unknown, not a pass', () => {
@@ -496,3 +497,46 @@ test('CSRF and iframe settings need a boolean', () => {
     assert.ok(found.includes('syn-iframe-unknown'));
 });
 
+test('best practices give no finding when a setting was not read', () => {
+    const app = loadApp();
+    const bp = (cfg, extras = {}) => [...app.runAllBestPracticesChecks(new Map(Object.entries(cfg)), null,
+        { schedulerTasks: [{ app: 'other', state: 'enabled' }], hasBtrfs: true, ...extras })]
+        .map(f => `${f.id}:${f.status}`).sort();
+    assert.deepEqual(bp({}), ['bp-no-recycle-task:fail']);
+    const off = { CIFS_Enable_Transfer_Log: '0', CIFS_Strict_Allocate: '0', CIFS_Enable_AIO_Read: '0',
+        CIFS_Enable_Multichannel: '0', CIFS_Widelinks: '0', AFP_isEnableAFP: '0', ADV_isEnableReflinkCopy: '0' };
+    assert.deepEqual(bp(off), [
+        'bp-afp-disabled:pass', 'bp-no-fast-clone:fail', 'bp-no-recycle-task:fail', 'bp-smb-cross-share-symlinks-ok:pass',
+        'bp-smb-no-aio:fail', 'bp-smb-no-multichannel:fail', 'bp-smb-no-strict-allocate:fail', 'bp-smb-transfer-log-off:pass',
+    ].sort());
+    const on = Object.fromEntries(Object.keys(off).map(k => [k, '1']));
+    assert.deepEqual(bp(on), [
+        'bp-afp-enabled:fail', 'bp-fast-clone-ok:pass', 'bp-no-recycle-task:fail', 'bp-smb-aio-ok:pass',
+        'bp-smb-cross-share-symlinks:fail', 'bp-smb-multichannel-ok:pass', 'bp-smb-strict-allocate-ok:pass',
+        'bp-smb-transfer-log-on:fail',
+    ].sort());
+    const garbage = Object.fromEntries(Object.keys(off).map(k => [k, 'x']));
+    assert.deepEqual(bp(garbage), ['bp-no-recycle-task:fail']);
+});
+
+test('recycle task best practice needs a readable, non-empty task list', () => {
+    const app = loadApp();
+    const run = tasks => [...app.runAllBestPracticesChecks(new Map(), null, { schedulerTasks: tasks })]
+        .filter(f => f.id.includes('recycle')).map(f => `${f.id}:${f.status}`);
+    assert.deepEqual(run([]), []);
+    assert.deepEqual(run(null), []);
+    assert.deepEqual(run(undefined), []);
+    assert.deepEqual(run([{ app: 'other', state: 'enabled' }]), ['bp-no-recycle-task:fail']);
+    assert.deepEqual(run([{ app: 'SYNO.SDS.TaskScheduler.Recycle', state: 'enabled' }]), ['bp-recycle-task-ok:pass']);
+});
+
+test('custom ports pass only when every relevant port was read', () => {
+    const app = loadApp();
+    const bp = cfg => ids([...app.runAllBestPracticesChecks(new Map(Object.entries(cfg)), null, { schedulerTasks: [] })]);
+    const dsm = { w3_admin_port: '5009', w3_secure_admin_port: '5010' };
+    assert.ok(!bp({ ...dsm, Terminal_isEnableSSH: '1' }).includes('bp-custom-ports'));
+    assert.ok(!bp(dsm).includes('bp-custom-ports'));
+    assert.ok(!bp({ w3_admin_port: '5009', Terminal_isEnableSSH: '0' }).includes('bp-custom-ports'));
+    assert.ok(bp({ ...dsm, Terminal_isEnableSSH: '1', Terminal_SSHPort: '2222' }).includes('bp-custom-ports'));
+    assert.ok(bp({ ...dsm, Terminal_isEnableSSH: '0' }).includes('bp-custom-ports'));
+});
