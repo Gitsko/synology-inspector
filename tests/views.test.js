@@ -49,7 +49,7 @@ test('filter controls expose their state instead of being disabled', () => {
 test('framework chips name their finding count for screen readers', () => {
     const { app, findings } = setup();
     const html = app.renderComplianceView(findings);
-    assert.match(html, /<span class="fw-chip-count" aria-hidden="true">6<\/span><span class="visually-hidden">: 6 issues<\/span>/);
+    assert.match(html, /<span class="fw-chip-count" aria-hidden="true">5<\/span><span class="visually-hidden">: 5 issues<\/span>/);
     assert.equal(app.findingCountText(1), '1 issue');
 });
 

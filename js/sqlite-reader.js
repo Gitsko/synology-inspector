@@ -184,9 +184,14 @@ const SQLITE_MAX_TREE_DEPTH = 20;
  */
 function sqliteScanBTree(bytes, pageNum, pageSize, usableSize, visited = new Set(), depth = 0) {
     const results = [];
-    const pageCount = Math.floor(bytes.length / pageSize);
-    if (!Number.isInteger(pageNum) || pageNum < 1 || pageNum > pageCount) return results;
-    if (visited.has(pageNum) || depth > SQLITE_MAX_TREE_DEPTH) return results;
+    // A truncated last page still counts; its records are bounds-checked when decoded
+    const pageCount = Math.ceil(bytes.length / pageSize);
+    // Structural damage aborts the read: partial rows could turn into a wrong pass
+    if (!Number.isInteger(pageNum) || pageNum < 1 || pageNum > pageCount) {
+        throw new Error(`Page ${pageNum} lies outside the database`);
+    }
+    if (visited.has(pageNum)) throw new Error(`Page ${pageNum} is linked more than once`);
+    if (depth >= SQLITE_MAX_TREE_DEPTH) throw new Error('B-tree is deeper than SQLite allows');
     visited.add(pageNum);
     const pageOffset = (pageNum - 1) * pageSize;
     const isPage1   = (pageNum === 1);

@@ -48,7 +48,7 @@ test('missing data is reported as unknown, never as passed', () => {
     const findings = runChecks(app, {}, { autoBackupConfigured: null });
     const unknown = [...findings.filter(f => f.status === 'unknown').map(f => f.id)].sort();
     assert.deepEqual(unknown, [
-        'syn-account-protection-unknown', 'syn-admin-unknown', 'syn-admins-unknown', 'syn-advisories-unknown', 'syn-config-backup-unknown', 'syn-csrf-unknown',
+        'syn-account-protection-unknown', 'syn-admin-unknown', 'syn-admins-unknown', 'syn-advisories-unknown', 'syn-autoblock-unknown', 'syn-config-backup-unknown', 'syn-csrf-unknown',
         'syn-dos-unknown', 'syn-firewall-unknown', 'syn-guest-unknown', 'syn-iframe-unknown',
         'syn-ip-check-unknown', 'syn-notify-unknown', 'syn-ntlmv1-unknown', 'syn-qc-unknown', 'syn-security-updates-unknown',
         'syn-services-unknown', 'syn-smb1-unknown', 'syn-ssh-unknown', 'syn-telnet-unknown', 'syn-tls-unknown',
@@ -298,6 +298,8 @@ test('a non-numeric minimum password length is unknown, not a pass', () => {
     assert.ok(ids(runChecks(app, cfg(undefined))).includes('syn-pwd-length-unknown'));
     assert.ok(ids(runChecks(app, cfg('12'))).includes('syn-pwd-length-ok'));
     assert.ok(ids(runChecks(app, cfg('8'))).includes('syn-pwd-length-weak'));
+    assert.ok(ids(runChecks(app, cfg('12abc'))).includes('syn-pwd-length-unknown'));
+    assert.ok(ids(runChecks(app, cfg('9'.repeat(310)))).includes('syn-pwd-length-unknown'));
 });
 
 test('DoS protection reads only an active directive per interface', () => {
@@ -306,7 +308,23 @@ test('DoS protection reads only an active directive per interface', () => {
     assert.ok(ids(runChecks(app, dos('\n[SETTINGS]\ndos_protect_enable=yes\n'))).includes('syn-dos-protected'));
     assert.ok(ids(runChecks(app, dos('[SETTINGS]\n#dos_protect_enable=yes\ndos_protect_enable=no\n'))).includes('syn-dos-incomplete'));
     assert.ok(ids(runChecks(app, dos('[SETTINGS]\n# dos_protect_enable=yes\n'))).includes('syn-dos-incomplete'));
-    assert.ok(ids(runChecks(app, dos('[SETTINGS]\ndos_protect_enable=yesterday\n'))).includes('syn-dos-incomplete'));
+    assert.ok(ids(runChecks(app, dos('[SETTINGS]\ndos_protect_enable="yes"\n'))).includes('syn-dos-protected'));
+    for (const unclear of ['dos_protect_enable=yesterday', 'dos_protect_enable="yes', 'dos_protect_enable=yes\ndos_protect_enable=no # off']) {
+        assert.ok(ids(runChecks(app, dos(`[SETTINGS]\n${unclear}\n`))).includes('syn-dos-unknown'), unclear);
+    }
+    // An unprotected interface fails even when another one is unclear
+    const mixed = { DOS_config: JSON.stringify({
+        '/etc/fw_security/eth0.conf': 'dos_protect_enable=maybe', '/etc/fw_security/eth1.conf': 'dos_protect_enable=no' }) };
+    assert.ok(ids(runChecks(app, mixed)).includes('syn-dos-incomplete'));
+});
+
+test('auto block needs numeric attempt and period values', () => {
+    const app = loadApp();
+    const cfg = (attempts, min) => ({ AutoBlock_attempts: attempts, AutoBlock_attemptMin: min });
+    assert.ok(ids(runChecks(app, cfg('10', '5'))).includes('syn-autoblock-on'));
+    assert.ok(ids(runChecks(app, cfg('0', '5'))).includes('syn-autoblock-off'));
+    assert.ok(ids(runChecks(app, cfg('5x', '5'))).includes('syn-autoblock-unknown'));
+    assert.ok(ids(runChecks(app, cfg('10', undefined))).includes('syn-autoblock-unknown'));
 });
 
 test('TLS snippets with unrecognized protocol names are not a pass', () => {
@@ -319,12 +337,19 @@ test('TLS snippets with unrecognized protocol names are not a pass', () => {
     assert.ok(ids(run(conf('UNKNOWN'))).includes('syn-tls-unknown'));
     assert.ok(ids(run(conf('UNKNOWN TLSv1'))).includes('syn-tls-weak'));
     assert.ok(ids(run(conf('TLSv1.2'))).includes('syn-tls-ok'));
+    // A weak service is reported even when another file is unclear
+    const weakAndUnclear = runChecks(app, {}, { tlsConfigs: [
+        { name: 'ConfigBkp/tls_profile/config/dsm.conf', text: conf('TLSv1') },
+        { name: 'ConfigBkp/tls_profile/config/webdav.conf', text: conf('UNKNOWN') },
+    ] });
+    assert.ok(ids(weakAndUnclear).includes('syn-tls-weak'));
 });
 
 test('SMB minimum protocol accepts only real SMB2/SMB3 dialect names', () => {
     const app = loadApp();
     assert.ok(ids(runChecks(app, { CIFS_Min_Protocol: 'SMB2_10' })).includes('syn-smb1-disabled'));
     assert.ok(ids(runChecks(app, { CIFS_Min_Protocol: 'SMB3_11' })).includes('syn-smb1-disabled'));
+    assert.ok(ids(runChecks(app, { CIFS_Min_Protocol: 'SMB3' })).includes('syn-smb1-disabled'));
     assert.ok(ids(runChecks(app, { CIFS_Min_Protocol: 'SMB2-invalid' })).includes('syn-smb1-unknown'));
     assert.ok(ids(runChecks(app, { CIFS_Min_Protocol: 'SMB3_999' })).includes('syn-smb1-unknown'));
 });
@@ -354,6 +379,7 @@ test('notifications: one enabled channel passes, all off fails, a configured web
     assert.deepEqual(find({ ...off, NOTIFY_webhookconf: 'null' }), ['syn-notify-off:fail']);
     assert.deepEqual(find({ ...off, NOTIFY_pushservice_mobile_enabled: '1' }), ['syn-notify-ok:pass']);
     assert.deepEqual(find({ NOTIFY_smtp_mail_enabled: '1' }), ['syn-notify-ok:pass']);
+    assert.deepEqual(find({ ...off, NOTIFY_pushservice_mail_enabled: '1' }), ['syn-notify-ok:pass']);
     assert.deepEqual(find({ ...off, NOTIFY_sms_enable: 'yes' }), ['syn-notify-unknown:unknown']);
     assert.deepEqual(find({ ...off, NOTIFY_webhookconf: '{"hooks":[{}]}' }), ['syn-notify-unknown:unknown']);
     assert.equal(byId(runChecks(app, off), 'syn-notify-off').severity, 'low');

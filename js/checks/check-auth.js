@@ -13,11 +13,15 @@ function checkAuth(config, _tlsProfile, parseResult) {
 
     // ── Auto-block ────────────────────────────────────────────────────────────
     // AutoBlock_attempts > 0 means the feature is configured with an attempt limit.
-    // A value of 0 or missing key means auto-block is effectively off.
-    const autoBlockAttempts = parseInt(config.get('AutoBlock_attempts') || '0', 10);
-    const autoBlockMinutes  = parseInt(config.get('AutoBlock_attemptMin') || '0', 10);
+    // A value of 0 means auto-block is effectively off; a missing or non-numeric
+    // value cannot be evaluated.
+    const autoBlockRaw      = [config.get('AutoBlock_attempts'), config.get('AutoBlock_attemptMin')];
+    const [autoBlockAttempts, autoBlockMinutes] = autoBlockRaw.map(v => parseInt(v, 10));
 
-    if (autoBlockAttempts > 0 && autoBlockMinutes > 0) {
+    if (!autoBlockRaw.every(v => /^\d{1,6}$/.test(v ?? ''))) {
+        findings.push(unknownFinding('syn-autoblock-unknown', t('checkNameAutoBlock'), t('catAuth'),
+            [fwRef('CIS', '4.10'), fwRef('NIST', 'AC-7'), fwRef('ISO', 'A.8.5')]));
+    } else if (autoBlockAttempts > 0 && autoBlockMinutes > 0) {
         findings.push({
             id:          'syn-autoblock-on',
             title:       t('checkAutoBlockPassTitle'),

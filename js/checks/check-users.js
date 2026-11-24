@@ -69,7 +69,7 @@ function checkUsers(config, _tlsProfile, parseResult) {
         const minLengthRaw     = config.get('Passwdstrength_minLength') ?? '';
         const minLength        = minLengthEnabled ? parseInt(minLengthRaw, 10) : 0;
 
-        if (minLengthEnabled && !/^\d+$/.test(minLengthRaw)) {
+        if (minLengthEnabled && !/^\d{1,3}$/.test(minLengthRaw)) {
             findings.push(unknownFinding('syn-pwd-length-unknown', t('checkNamePwdLength'), t('catUsers'),
                 [fwRef('CIS', '5.2'), fwRef('ISO', 'A.5.17'), fwRef('PCI', 'Req.8.3.6')]));
         } else if (!minLengthEnabled || minLength < 12) {

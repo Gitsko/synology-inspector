@@ -117,7 +117,10 @@ test('account protection state comes from SmartBlock_0, padded as in real backup
     // Untyped value column so an integer flag stays an integer
     const state = flag => app.buildSynoExtras(buildDb(db => {
         db.exec('CREATE TABLE confbkp_smartblock_table (key TEXT, value)');
-        db.prepare('INSERT INTO confbkp_smartblock_table VALUES (?, ?)').run('SmartBlock_0', flag);
+        const ins = db.prepare('INSERT INTO confbkp_smartblock_table VALUES (?, ?)');
+        ins.run('SmartBlock_1', ' 0');
+        ins.run('SmartBlock_0', flag);
+        ins.run('SmartBlock_2', ' 1');
     })).accountProtectionEnabled;
     assert.equal(state(' 1'), true);
     assert.equal(state(' 0'), false);
@@ -160,6 +163,11 @@ test('a record header size beyond the payload is rejected without reading past i
     assert.throws(() => app.sqliteDecodeRecord(payload), /header/i);
 });
 
+test('a record header size smaller than its own varint is rejected', () => {
+    const app = loadApp();
+    assert.throws(() => app.sqliteDecodeRecord(new Uint8Array([0, 1])), /header/i);
+});
+
 function tableBytes(rows) {
     return buildDb(db => {
         db.exec('CREATE TABLE confbkp_config_tb (config_key TEXT, config_value TEXT)');
@@ -168,7 +176,14 @@ function tableBytes(rows) {
     });
 }
 
-test('an interior page that points at itself does not recurse forever', () => {
+test('a truncated last page still counts as part of the file', () => {
+    const app = loadApp();
+    const bytes = tableBytes(400);
+    const rows = app.readSQLiteTable(bytes.subarray(0, bytes.length - 1), 'confbkp_config_tb');
+    assert.equal(rows.length, 400);
+});
+
+test('an interior page that points at itself is rejected as corrupt', () => {
     const app = loadApp();
     const bytes = tableBytes(2);
     const pageSize = (bytes[16] << 8) | bytes[17];
@@ -176,29 +191,37 @@ test('an interior page that points at itself does not recurse forever', () => {
     bytes[root] = 0x05;                                      // turn it into an interior page
     bytes[root + 3] = 0; bytes[root + 4] = 0;                // no cells
     bytes.set([0, 0, 0, 2], root + 8);                       // rightmost child = itself
-    let rows;
-    assert.doesNotThrow(() => { rows = app.readSQLiteTable(bytes, 'confbkp_config_tb'); });
-    assert.equal(rows.length, 0);
+    assert.throws(() => app.readSQLiteTable(bytes, 'confbkp_config_tb'), /linked more than once/);
 });
 
-test('a child page referenced twice is read once', () => {
+test('a child page referenced twice is rejected as corrupt', () => {
     const app = loadApp();
     const bytes = tableBytes(400);
-    const expected = app.readSQLiteTable(bytes, 'confbkp_config_tb').length;
     const pageSize = (bytes[16] << 8) | bytes[17];
     const root = pageSize;
     assert.equal(bytes[root], 0x05, 'fixture must have an interior root page');
     const cellPtr = (bytes[root + 12] << 8) | bytes[root + 13];
     bytes.copyWithin(root + 8, root + cellPtr, root + cellPtr + 4);   // rightmost child = first child
-    const rows = app.readSQLiteTable(bytes, 'confbkp_config_tb');
-    assert.ok(rows.length < expected);
-    assert.equal(new Set(rows.map(r => r[0])).size, rows.length, 'no duplicate rows');
+    assert.throws(() => app.readSQLiteTable(bytes, 'confbkp_config_tb'), /linked more than once/);
 });
 
-test('child page numbers outside the file are ignored', () => {
+test('child page numbers outside the file are rejected as corrupt', () => {
     const app = loadApp();
     const bytes = tableBytes(400);
     const root = (bytes[16] << 8) | bytes[17];
     bytes.set([0x7f, 0xff, 0xff, 0xff], root + 8);
-    assert.doesNotThrow(() => app.readSQLiteTable(bytes, 'confbkp_config_tb'));
+    assert.throws(() => app.readSQLiteTable(bytes, 'confbkp_config_tb'), /outside the database/);
+});
+
+test('a B-tree deeper than SQLite allows is rejected as corrupt', () => {
+    const app = loadApp();
+    // Chain of interior pages 1 -> 2 -> ... -> 30, each with no cells and a rightmost child
+    const pageSize = 512, pages = 30;
+    const bytes = new Uint8Array(pageSize * pages);
+    for (let n = 1; n <= pages; n++) {
+        const base = (n - 1) * pageSize;
+        bytes[base] = 0x05;
+        new DataView(bytes.buffer).setUint32(base + 8, n + 1 > pages ? n : n + 1);
+    }
+    assert.throws(() => app.sqliteScanBTree(bytes, 2, pageSize, pageSize), /deeper/);
 });

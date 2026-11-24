@@ -344,6 +344,7 @@
             checkNameSecurityUpdates: 'Automatic security updates',
             checkNameNotify:          'Notifications',
             checkNameAccountProtection: 'Account protection',
+            checkNameAutoBlock:      'Auto block',
             affectedItems:           'Affected items',
             howToFix:                'How to fix',
 
@@ -445,6 +446,7 @@
             checkNameSecurityUpdates: 'Automatische Sicherheitsupdates',
             checkNameNotify:          'Benachrichtigungen',
             checkNameAccountProtection: 'Kontoschutz',
+            checkNameAutoBlock:      'Automatische Kontosperrung',
             affectedItems:           'Betroffene Elemente',
             howToFix:                'So beheben',
 
