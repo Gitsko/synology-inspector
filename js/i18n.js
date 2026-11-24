@@ -274,9 +274,6 @@
             bpCheckFastCloneRemediation:        'Enable File Fast Clone: Control Panel › File Services › Advanced › Enable file fast clone.',
 
             bpCheckUpdateNotifyPassTitle:       'DSM Feature Updates Are Not Installed Automatically',
-            bpCheckUpdateNotifyFailTitle:       'DSM Installs All Updates Automatically',
-            bpCheckUpdateNotifyDesc:            'Automatic installation of all DSM updates, including feature releases, can cause unplanned downtime and introduce incompatibilities with installed packages or running containers. Installing only important security updates automatically, or being notified, keeps feature updates under your control.',
-            bpCheckUpdateNotifyRemediation:     'Change the update setting to install only important updates automatically, or to notify only: Control Panel › Update & Restore › DSM Update › Update Settings.',
 
             bpCheckRecycleTaskPassTitle:        'Recycle Bin Cleanup Task Is Configured',
             bpCheckRecycleTaskFailTitle:        'No Recycle Bin Cleanup Task Found',
@@ -761,9 +758,6 @@
             bpCheckFastCloneRemediation:        'File Fast Clone aktivieren: Systemsteuerung › Dateidienste › Erweitert › Datei-Fast-Clone aktivieren.',
 
             bpCheckUpdateNotifyPassTitle:       'DSM-Funktionsupdates werden nicht automatisch installiert',
-            bpCheckUpdateNotifyFailTitle:       'DSM installiert alle Updates automatisch',
-            bpCheckUpdateNotifyDesc:            'Werden alle DSM-Updates einschließlich neuer Funktionsversionen automatisch installiert, kann das ungeplante Ausfallzeiten und Inkompatibilitäten mit installierten Paketen oder laufenden Containern verursachen. Wer nur wichtige Sicherheitsupdates automatisch installieren oder sich benachrichtigen lässt, behält Funktionsupdates unter Kontrolle.',
-            bpCheckUpdateNotifyRemediation:     'Update-Einstellung ändern, sodass nur wichtige Updates automatisch installiert werden oder nur benachrichtigt wird: Systemsteuerung › Aktualisierung & Wiederherstellung › DSM-Aktualisierung › Update-Einstellungen.',
 
             bpCheckRecycleTaskPassTitle:        'Papierkorb-Bereinigungsaufgabe ist konfiguriert',
             bpCheckRecycleTaskFailTitle:        'Keine Papierkorb-Bereinigungsaufgabe gefunden',
