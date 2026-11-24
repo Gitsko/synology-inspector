@@ -269,6 +269,12 @@ test('advisory check keeps unverifiable advisories next to vulnerable ones', () 
     assert.deepEqual([...unk.affectedItems].map(i => i.split(' ')[0]), ['SA-26:19', 'SA-26:13']);
 });
 
+test('advisory check rejects build numbers beyond the safe integer range', () => {
+    const app = loadApp();
+    const findings = runChecks(app, {}, { info: { dsm_buildnumber: '99999999999999999999' } });
+    assert.ok(ids(findings).includes('syn-advisories-unknown'));
+});
+
 test('advisory check rejects build numbers with trailing garbage', () => {
     const app = loadApp();
     const f = byId(runChecks(app, {}, { info: { dsm_buildnumber: '90100-invalid' } }), 'syn-advisories-unknown');
@@ -289,6 +295,7 @@ test('a non-numeric minimum password length is unknown, not a pass', () => {
     const app = loadApp();
     const cfg = len => ({ Passwdstrength_isApplyPasswdRule: '1', Passwdstrength_isEnableMinLength: '1', Passwdstrength_minLength: len });
     assert.ok(ids(runChecks(app, cfg('abc'))).includes('syn-pwd-length-unknown'));
+    assert.ok(ids(runChecks(app, cfg(undefined))).includes('syn-pwd-length-unknown'));
     assert.ok(ids(runChecks(app, cfg('12'))).includes('syn-pwd-length-ok'));
     assert.ok(ids(runChecks(app, cfg('8'))).includes('syn-pwd-length-weak'));
 });
@@ -319,6 +326,7 @@ test('SMB minimum protocol accepts only real SMB2/SMB3 dialect names', () => {
     assert.ok(ids(runChecks(app, { CIFS_Min_Protocol: 'SMB2_10' })).includes('syn-smb1-disabled'));
     assert.ok(ids(runChecks(app, { CIFS_Min_Protocol: 'SMB3_11' })).includes('syn-smb1-disabled'));
     assert.ok(ids(runChecks(app, { CIFS_Min_Protocol: 'SMB2-invalid' })).includes('syn-smb1-unknown'));
+    assert.ok(ids(runChecks(app, { CIFS_Min_Protocol: 'SMB3_999' })).includes('syn-smb1-unknown'));
 });
 
 test('optional services: enabled ones fail, all explicitly off passes', () => {

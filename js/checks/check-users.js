@@ -66,7 +66,7 @@ function checkUsers(config, _tlsProfile, parseResult) {
     } else {
         // Min length
         const minLengthEnabled = config.get('Passwdstrength_isEnableMinLength') === '1';
-        const minLengthRaw     = config.get('Passwdstrength_minLength') || '0';
+        const minLengthRaw     = config.get('Passwdstrength_minLength') ?? '';
         const minLength        = minLengthEnabled ? parseInt(minLengthRaw, 10) : 0;
 
         if (minLengthEnabled && !/^\d+$/.test(minLengthRaw)) {

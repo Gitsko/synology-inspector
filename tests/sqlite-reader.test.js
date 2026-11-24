@@ -114,12 +114,15 @@ test('auto config backup state needs an explicit true/false flag', () => {
 
 test('account protection state comes from SmartBlock_0, padded as in real backups', () => {
     const app = loadApp();
+    // Untyped value column so an integer flag stays an integer
     const state = flag => app.buildSynoExtras(buildDb(db => {
-        db.exec('CREATE TABLE confbkp_smartblock_table (key TEXT, value TEXT)');
+        db.exec('CREATE TABLE confbkp_smartblock_table (key TEXT, value)');
         db.prepare('INSERT INTO confbkp_smartblock_table VALUES (?, ?)').run('SmartBlock_0', flag);
     })).accountProtectionEnabled;
     assert.equal(state(' 1'), true);
     assert.equal(state(' 0'), false);
+    assert.equal(state(1n), true);
+    assert.equal(state(0n), false);
     assert.equal(state('yes'), null);
     assert.equal(state(null), null);
     assert.equal(app.buildSynoExtras(buildDb(() => {})).accountProtectionEnabled, null);

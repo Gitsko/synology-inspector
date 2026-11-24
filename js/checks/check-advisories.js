@@ -86,7 +86,7 @@ function checkAdvisories(config, _tlsProfile, parseResult) {
     const fw    = [fwRef('CIS', '7.3'), fwRef('NIST', 'SI-2'), fwRef('ISO', 'A.8.8'), fwRef('PCI', 'Req.6.3.3')];
     const raw   = String(parseResult?.info?.dsm_buildnumber ?? '').trim();
     const build = /^\d+$/.test(raw) ? parseInt(raw, 10) : NaN;
-    if (!Number.isInteger(build) || build <= 0) {
+    if (!Number.isSafeInteger(build) || build <= 0) {
         return [unknownFinding('syn-advisories-unknown', t('checkNameAdvisories'), t('catMaintenance'), fw)];
     }
 

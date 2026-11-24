@@ -374,7 +374,8 @@ function buildSynoExtras(buffer) {
     // trusted clients (confirmed against the DSM UI on a DSM 7.4 backup).
     const smartBlockRows = readSQLiteTable(buffer, 'confbkp_smartblock_table');
     const smartBlockOn = smartBlockRows.find(r => r[0] === 'SmartBlock_0')?.[1];
-    const smartBlockFlag = typeof smartBlockOn === 'string' ? smartBlockOn.trim() : null;
+    const smartBlockFlag = typeof smartBlockOn === 'string' || typeof smartBlockOn === 'number'
+        ? String(smartBlockOn).trim() : null;
     const accountProtectionEnabled = smartBlockFlag === '1' ? true : smartBlockFlag === '0' ? false : null;
 
     // ── btrfs volumes ────────────────────────────────────────────────────────────

@@ -46,7 +46,9 @@ function checkProtocols(config, _tlsProfile, parseResult) {
     // CIFS_Min_Protocol: 'SMB1' / 'NT1' = SMBv1 allowed; 'SMB2' / 'SMB3' = secure
     const minProto  = (config.get('CIFS_Min_Protocol') || '').toUpperCase();
     const smb1On    = (minProto === 'SMB1' || minProto === 'NT1');
-    const smb2Plus  = /^SMB[23](_\d+)?$/.test(minProto);
+    // Dialect names Samba accepts for 'server min protocol'
+    const smb2Plus  = ['SMB2', 'SMB2_02', 'SMB2_10', 'SMB2_22', 'SMB2_24',
+                       'SMB3', 'SMB3_00', 'SMB3_02', 'SMB3_10', 'SMB3_11'].includes(minProto);
 
     if (!smb1On && !smb2Plus) {
         findings.push(unknownFinding('syn-smb1-unknown', t('checkNameSMBMinProto'), t('catProtocols'),
