@@ -18,10 +18,14 @@ function checkBestPractices(config, _tlsProfile, parseResult) {
 
     // ── Network: default ports ─────────────────────────────────────────────────
     // A changed port does not stop targeted attacks, but cuts noise from scanners.
+    const sshFlag      = config.get('Terminal_isEnableSSH');
     const defaultPorts = [];
     if (config.get('w3_admin_port') === '5000')        defaultPorts.push('DSM HTTP 5000');
     if (config.get('w3_secure_admin_port') === '5001') defaultPorts.push('DSM HTTPS 5001');
-    if (config.get('Terminal_isEnableSSH') === '1' && config.get('Terminal_SSHPort') === '22') defaultPorts.push('SSH 22');
+    if (sshFlag === '1' && config.get('Terminal_SSHPort') === '22') defaultPorts.push('SSH 22');
+    // A pass needs every port in question: both DSM ports, plus the SSH port if SSH is on
+    const allPortsRead = config.has('w3_admin_port') && config.has('w3_secure_admin_port')
+        && (sshFlag === '0' || (sshFlag === '1' && config.has('Terminal_SSHPort')));
     if (defaultPorts.length) {
         findings.push({
             id:          'bp-default-ports',
@@ -34,10 +38,7 @@ function checkBestPractices(config, _tlsProfile, parseResult) {
             affectedItems: defaultPorts,
             remediation: t('bpCheckPortsRemediation'),
         });
-    } else if (config.has('w3_admin_port') && config.has('w3_secure_admin_port')
-        && (config.get('Terminal_isEnableSSH') === '0'
-            || (config.get('Terminal_isEnableSSH') === '1' && config.has('Terminal_SSHPort')))) {
-        // Only a pass when every port in question was read
+    } else if (allPortsRead) {
         findings.push({
             id:          'bp-custom-ports',
             title:       t('bpCheckPortsPassTitle'),
@@ -282,9 +283,7 @@ function checkBestPractices(config, _tlsProfile, parseResult) {
         task => task.app === 'SYNO.SDS.TaskScheduler.Recycle' && task.state === 'enabled'
     );
 
-    if (!schedulerTasks?.length) {
-        // no finding
-    } else if (!hasRecycleTask) {
+    if (schedulerTasks?.length && !hasRecycleTask) {
         findings.push({
             id:          'bp-no-recycle-task',
             title:       t('bpCheckRecycleTaskFailTitle'),
@@ -296,7 +295,7 @@ function checkBestPractices(config, _tlsProfile, parseResult) {
             affectedItems: [],
             remediation: t('bpCheckRecycleTaskRemediation'),
         });
-    } else {
+    } else if (hasRecycleTask) {
         findings.push({
             id:          'bp-recycle-task-ok',
             title:       t('bpCheckRecycleTaskPassTitle'),
