@@ -876,7 +876,7 @@
 
 .unknown-count {
     background: color-mix(in srgb, var(--sapNeutralColor, #556b82) 12%, transparent);
-    color: var(--color-text-1); /* --color-text-3 is 4.36:1 on this tint */
+    color: var(--color-text-1); /* --color-text-3 only reaches about 4.5:1 on this tint */
 }
 
 .unknown-section-hint {
