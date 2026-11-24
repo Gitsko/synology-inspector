@@ -142,16 +142,17 @@ function checkProtocols(config, _tlsProfile, parseResult) {
     if (ftpOn && !['0', '1', '2'].includes(ftpSslVal)) {
         findings.push(unknownFinding('syn-ftp-tls-unknown', t('checkNameFTPTLS'), t('catProtocols'), ftpFw));
     } else if (ftpOn && ftpSslVal !== '2') {
+        const optional = ftpSslVal === '1';
         findings.push({
             id:          'syn-ftp-no-tls',
-            title:       t('checkFTPTLSFailTitle'),
-            description: t('checkFTPTLSDesc'),
+            title:       t(optional ? 'checkFTPTLSOptionalFailTitle' : 'checkFTPTLSFailTitle'),
+            description: t(optional ? 'checkFTPTLSOptionalDesc' : 'checkFTPTLSDesc'),
             severity:    'medium',
             status:      'fail',
             category:    t('catProtocols'),
             frameworks:  ftpFw,
-            affectedItems: ['FTP (unencrypted)'],
-            remediation: t('checkFTPTLSRemediation'),
+            affectedItems: [optional ? 'FTP (TLS optional)' : 'FTP (unencrypted)'],
+            remediation: t(optional ? 'checkFTPTLSOptionalRemediation' : 'checkFTPTLSRemediation'),
         });
     } else if (ftpOn) {
         findings.push({

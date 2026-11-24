@@ -458,6 +458,12 @@ test('FTP passes only with required TLS; an unknown TLS value is unknown', () =>
     assert.deepEqual(ftp('x'), ['unknown']);
     assert.deepEqual(ftp(undefined), ['unknown']);
     assert.ok(!ids(runChecks(app, { FTP_isEnableFTP: '0' })).includes('syn-ftp-tls-unknown'));
+    const noTls = ssl => [...runChecks(app, { FTP_isEnableFTP: '1', FTP_isEnableSSL: ssl })]
+        .find(f => f.id === 'syn-ftp-no-tls');
+    assert.equal(noTls('1').title, app.t('checkFTPTLSOptionalFailTitle'));
+    assert.deepEqual([...noTls('1').affectedItems], ['FTP (TLS optional)']);
+    assert.equal(noTls('0').title, app.t('checkFTPTLSFailTitle'));
+    assert.deepEqual([...noTls('0').affectedItems], ['FTP (unencrypted)']);
 });
 
 test('DoS config that is not an object of INI texts is unknown', () => {
