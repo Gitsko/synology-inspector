@@ -44,6 +44,7 @@ let _appPhase     = 'idle';       // 'idle' | 'loading' | 'results' | 'compare' 
 let _parseResult  = null;
 let _compareResults = null;       // [parse result A, parse result B]
 let _errorMessage = '';
+let _errorKey     = '';           // translation key; rendered in the current language
 let _activeTab    = 'security';   // 'security' | 'bestpractices'
 
 // ── Main render ────────────────────────────────────────────────────────────────
@@ -91,7 +92,7 @@ function renderApp() {
             </div>
         `;
     } else if (_appPhase === 'error') {
-        root.innerHTML = renderErrorView(_errorMessage);
+        root.innerHTML = renderErrorView(errorText());
     }
 }
 
@@ -264,17 +265,22 @@ function processFile(file) {
 
 function showError(err) {
     _errorMessage = err.message || String(err);
+    _errorKey     = err.key || '';
     _appPhase     = 'error';
     renderApp();
     document.querySelector('.error-title')?.focus();
     // The focused heading already reads the error title
-    announce(_errorMessage);
+    announce(errorText());
+}
+
+function errorText() {
+    return _errorKey ? t(_errorKey) : _errorMessage;
 }
 
 /** Parse two backups and show the comparison of their settings. */
 function processComparison(files) {
     if (files.length !== 2) {
-        showError(new Error(t('errCompareCount')));
+        showError({ key: 'errCompareCount' });
         return;
     }
 
@@ -301,6 +307,7 @@ function resetApp() {
     _parseResult  = null;
     _compareResults = null;
     _errorMessage = '';
+    _errorKey     = '';
     _activeTab    = 'security';
     renderApp();
     announce('');

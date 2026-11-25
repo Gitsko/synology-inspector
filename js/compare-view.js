@@ -25,7 +25,7 @@ function toggleCompareShowAll() {
     compareState.showAll = !compareState.showAll;
     rerenderKeepingFocus(renderApp);
     const shown = document.querySelectorAll('.compare-row').length;
-    announce(t('announceFiltered', shown));
+    announce(shown ? t('announceFiltered', shown) : t('compareNoDifferences'));
 }
 
 function compareCounts(entries) {
@@ -56,15 +56,26 @@ function compareFindingsSummaryText(diff) {
     return t('compareFindingsSummary', diff.onlyA.length, diff.onlyB.length, diff.itemsChanged.length);
 }
 
-function renderCompareFinding(f, extra = '') {
-    const pill = f.status === 'unknown'
+function renderComparePill(f) {
+    return f.status === 'unknown'
         ? `<span class="severity-pill severity-pill--unknown">${t('severityUnknown')}</span>`
         : `<span class="severity-pill severity-pill--${f.severity}">${t('severity' + f.severity.charAt(0).toUpperCase() + f.severity.slice(1))}</span>`;
+}
+
+/** One pill, or one per side when the two backups rate the finding differently. */
+function renderComparePills(a, b) {
+    const pillA = renderComparePill(a);
+    const pillB = renderComparePill(b);
+    if (pillA === pillB) return pillB;
+    return `${t('compareSideA')}: ${pillA} ${t('compareSideB')}: ${pillB}`;
+}
+
+function renderCompareFinding(f, extra = '', pills = renderComparePill(f)) {
     const kind = t(f.kind === 'security' ? 'tabSecurity' : 'tabBestPractices');
     return `
         <li class="compare-finding">
-            ${pill}
-            <span class="compare-finding-title">${escapeHtml(f.title)}</span>
+            ${pills}
+            <span>${escapeHtml(f.title)}</span>
             <span class="compare-finding-kind">(${kind})</span>
             ${extra}
         </li>`;
@@ -84,7 +95,7 @@ function renderCompareFindings(diff) {
     const body = group('compareFindingsOnlyA', diff.onlyA.map(f => renderCompareFinding(f)).join(''))
         + group('compareFindingsOnlyB', diff.onlyB.map(f => renderCompareFinding(f)).join(''))
         + group('compareFindingsItemsChanged',
-            diff.itemsChanged.map(c => renderCompareFinding(c.b, renderCompareItems(c))).join(''));
+            diff.itemsChanged.map(c => renderCompareFinding(c.b, renderCompareItems(c), renderComparePills(c.a, c.b))).join(''));
     return `
         <section class="compare-section" aria-labelledby="compare-findings-title">
             <h3 class="compare-section-title" id="compare-findings-title">${t('compareFindingsTitle')}</h3>
@@ -105,7 +116,7 @@ function renderCompareValue(config, key, shownValue) {
 function renderCompareSide(label, parseResult) {
     const { version, model, hostname } = describeBackup(parseResult);
     return `
-        <div class="compare-side">
+        <div>
             <h3 class="compare-side-title">${label}</h3>
             <dl class="compare-side-list">
                 <dt>${t('labelFileName')}</dt><dd>${escapeHtml(parseResult.fileName)}</dd>

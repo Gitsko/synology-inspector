@@ -162,7 +162,7 @@ test('compare view says so when the backups do not differ', () => {
     const app = loadViews(loadApp());
     const [a, b] = compareFixture({ FTP_isEnableFTP: '1' }, { FTP_isEnableFTP: '1' });
     const html = app.renderCompareView(a, b);
-    assert.match(html, /Both backups have the same open check results\./);
+    assert.match(html, /No differences in which checks are open or in their affected items\./);
     assert.match(html, /No differences in the system settings\./);
     assert.doesNotMatch(html, /<table/);
 });
@@ -184,4 +184,74 @@ test('compare view shows check results even when the settings are equal', () => 
     const html = app.renderCompareView(a, b);
     assert.match(html, /No differences in the system settings\./);
     assert.match(html, /Only in backup B/);
+});
+
+test('compare view shows each side in its own cell with the matching status', () => {
+    const app = loadViews(loadApp());
+    const [a, b] = compareFixture(
+        { Terminal_SSHPort: '22', X_missing_in_b: '1', X_unreadable: null, X_empty: '' },
+        { Terminal_SSHPort: '2222', X_unreadable: '1', X_empty: '1' },
+    );
+    const html = app.renderCompareView(a, b);
+    const row = key => html.match(new RegExp(`<code>${key}</code></th>([\\s\\S]*?)</tr>`))[1];
+    assert.match(row('Terminal_SSHPort'), /<td><code>22<\/code><\/td>\s*<td><code>2222<\/code><\/td>\s*<td class="compare-status">Different<\/td>/);
+    assert.match(row('X_missing_in_b'), /<td><code>1<\/code><\/td>\s*<td>[^<]*<span[^>]*>not present<\/span><\/td>\s*<td class="compare-status">Only in A<\/td>/);
+    assert.match(row('X_unreadable'), /not readable[\s\S]*<code>1<\/code>[\s\S]*Not comparable/);
+    assert.match(row('X_empty'), /\(empty\)[\s\S]*<code>1<\/code>[\s\S]*Different/);
+    // Headers name the right file per side
+    assert.match(html, /Backup A<\/h3>[\s\S]*a\.dss[\s\S]*Backup B<\/h3>[\s\S]*b\.dss/);
+});
+
+test('compare view escapes markup from both backups', () => {
+    const app = loadViews(loadApp());
+    const [a, b] = compareFixture({ 'X_<b>key': '<i>a' }, { 'X_<b>key': '<i>b' });
+    a.fileName = '<img src=x>.dss';
+    const html = app.renderCompareView(a, b);
+    assert.doesNotMatch(html, /<b>key|<i>a|<i>b|<img/);
+    assert.match(html, /&lt;img src=x&gt;\.dss/);
+    assert.match(html, /X_&lt;b&gt;key/);
+});
+
+test('compare toggle shows unchanged settings and reports its state', () => {
+    const app = loadViews(loadApp());
+    const [a, b] = compareFixture({ FTP_isEnableFTP: '1', SNMP_isEnableSNMP: '0' }, { FTP_isEnableFTP: '0', SNMP_isEnableSNMP: '0' });
+    vm.runInContext('rerenderKeepingFocus = () => {}; announce = () => {};', app);
+    const html = app.renderCompareView(a, b);
+    assert.match(html, /aria-pressed="false" onclick="toggleCompareShowAll\(\)"/);
+    app.toggleCompareShowAll();
+    const shown = app.renderCompareView(a, b);
+    assert.match(shown, /aria-pressed="true"/);
+    assert.match(shown, /SNMP_isEnableSNMP/);
+    app.toggleCompareShowAll();
+    assert.match(app.renderCompareView(a, b), /aria-pressed="false"/);
+});
+
+test('compare view shows both severities when the backups rate a shared finding differently', () => {
+    const app = loadViews(loadApp());
+    const f = (severity, items) => ({ id: 'x', status: 'fail', severity, title: 'T', kind: 'security', affectedItems: items });
+    const diff = app.diffFindings([f('high', ['a'])], [f('medium', ['b'])]);
+    const html = app.renderCompareFindings(diff);
+    assert.match(html, /Backup A: <span class="severity-pill severity-pill--high">[\s\S]*Backup B: <span class="severity-pill severity-pill--medium">/);
+    assert.match(html, /only in A: a; only in B: b/);
+    const same = app.renderCompareFindings(app.diffFindings([f('high', ['a'])], [f('high', ['b'])]));
+    assert.doesNotMatch(same, /Backup A:/);
+});
+
+test('compare view escapes affected items on both sides', () => {
+    const app = loadViews(loadApp());
+    const f = items => [{ id: 'x', status: 'fail', severity: 'high', title: 'T', kind: 'security', affectedItems: items }];
+    const html = app.renderCompareFindings(app.diffFindings(f(['<i>a']), f(['<i>b'])));
+    assert.doesNotMatch(html, /<i>/);
+    assert.match(html, /only in A: &lt;i&gt;a; only in B: &lt;i&gt;b/);
+});
+
+test('compare count error follows a language switch', () => {
+    const app = loadViews(loadApp());
+    const root = { innerHTML: '' };
+    app.document.getElementById = id => (id === 'app' ? root : null);
+    app.document.querySelector = () => null;
+    app.processComparison([{}]);
+    assert.match(root.innerHTML, /Select exactly two \.dss files to compare\./);
+    app.setLanguage('de');
+    assert.match(root.innerHTML, /Für den Vergleich genau zwei \.dss-Dateien auswählen\./);
 });

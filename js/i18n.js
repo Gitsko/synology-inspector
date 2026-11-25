@@ -385,7 +385,7 @@
             compareValueEmpty:      '(empty)',
             compareSummary:   '{0} different, {1} only in A, {2} only in B, {3} not comparable',
             compareScope:     'Compares the system settings such as SMB, FTP, NFS, ports and password rules. Users, shares and scheduled tasks only count through the check results.',
-            compareHiddenNote: 'Every value is compared, but values that may hold passwords, keys or addresses, and long values, are not shown.',
+            compareHiddenNote: 'Values of settings whose names point to passwords, keys, certificates or mail, and values longer than 32 characters, are compared but not shown. Shorter values such as IP addresses or host names are shown.',
             compareShowAll:   'Show unchanged settings',
             compareNoDifferences: 'No differences in the system settings.',
             compareSettingsTitle: 'System settings',
@@ -395,7 +395,7 @@
             compareFindingsOnlyA: 'Only in backup A',
             compareFindingsOnlyB: 'Only in backup B',
             compareFindingsItemsChanged: 'In both, with different affected items',
-            compareFindingsNone:  'Both backups have the same open check results.',
+            compareFindingsNone:  'No differences in which checks are open or in their affected items.',
             compareItemsOnlyA:    'only in A: {0}',
             compareItemsOnlyB:    'only in B: {0}',
             aboutMaker:       'JKLP CONSULTING · SECURITY AUDIT',
@@ -526,17 +526,17 @@
             compareValueEmpty:      '(leer)',
             compareSummary:   '{0} unterschiedlich, {1} nur in A, {2} nur in B, {3} nicht vergleichbar',
             compareScope:     'Verglichen werden die Systemeinstellungen wie SMB, FTP, NFS, Ports und Passwortregeln. Benutzer, Freigaben und geplante Aufgaben fließen nur über die Prüfergebnisse ein.',
-            compareHiddenNote: 'Jeder Wert wird verglichen. Werte, die Passwörter, Schlüssel oder Adressen enthalten können, und lange Werte werden nicht angezeigt.',
+            compareHiddenNote: 'Werte von Einstellungen, deren Namen auf Passwörter, Schlüssel, Zertifikate oder E-Mail hindeuten, und Werte über 32 Zeichen werden verglichen, aber nicht angezeigt. Kürzere Werte wie IP-Adressen oder Hostnamen sind sichtbar.',
             compareShowAll:   'Unveränderte Einstellungen anzeigen',
             compareNoDifferences: 'Keine Unterschiede in den Systemeinstellungen.',
             compareSettingsTitle: 'Systemeinstellungen',
             compareFindingsTitle: 'Prüfergebnisse',
-            compareFindingsNote:  'Fehlgeschlagene und nicht prüfbare Prüfungen aus Sicherheit und Best Practices. Bestandene Prüfungen werden nicht aufgeführt.',
+            compareFindingsNote:  'Fehlgeschlagene Sicherheits- und Best-Practice-Prüfungen sowie Prüfungen, die nicht ausgewertet werden konnten. Bestandene Prüfungen werden nicht aufgeführt.',
             compareFindingsSummary: '{0} nur in A, {1} nur in B, {2} mit anderen betroffenen Einträgen',
             compareFindingsOnlyA: 'Nur in Sicherung A',
             compareFindingsOnlyB: 'Nur in Sicherung B',
             compareFindingsItemsChanged: 'In beiden, mit anderen betroffenen Einträgen',
-            compareFindingsNone:  'Beide Sicherungen haben dieselben offenen Prüfergebnisse.',
+            compareFindingsNone:  'Keine Unterschiede bei den offenen Prüfungen und ihren betroffenen Einträgen.',
             compareItemsOnlyA:    'nur in A: {0}',
             compareItemsOnlyB:    'nur in B: {0}',
             aboutMaker:       'JKLP CONSULTING · SICHERHEITSAUDIT',
@@ -853,7 +853,9 @@
         let str = (STRINGS[_lang] && STRINGS[_lang][key]) ||
                   (STRINGS['en']  && STRINGS['en'][key])  ||
                   key;
-        args.forEach((arg, i) => { str = str.replace(`{${i}}`, arg); });
+        // One pass with a replacer function: a value that contains "$&" or
+        // "{1}" is inserted literally instead of being expanded again
+        str = str.replace(/\{(\d+)\}/g, (match, i) => (i < args.length ? String(args[i]) : match));
         return str;
     };
 

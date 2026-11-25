@@ -8,7 +8,7 @@
  */
 
 const COMPARE_MAX_SHOWN_LENGTH = 32;
-const COMPARE_SECRET_KEY = /passw|pwd|secret|token|key|conf|priv|cert|mail|pair/i;
+const COMPARE_SECRET_KEY = /passw|pwd|secret|token|key|conf|priv|cert|mail|pair|filter/i;
 
 function compareDisplayValue(key, value) {
     if (typeof value !== 'string') return null;

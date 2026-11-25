@@ -980,6 +980,16 @@
     background: var(--color-brand);
 }
 
+/* Forced colors would drop the filled state; system colors keep it visible */
+@media (forced-colors: active) {
+    .compare-toggle[aria-pressed="true"] {
+        forced-color-adjust: none;
+        color: HighlightText;
+        background: Highlight;
+        border-color: Highlight;
+    }
+}
+
 .compare-scroll {
     flex: 1;
     overflow: auto;
@@ -1013,6 +1023,7 @@
 .compare-table tbody th[scope="row"] { font-weight: 400; }
 
 .compare-group {
+    overflow-wrap: anywhere;
     font-weight: 700;
     color: var(--color-text-1);
     background: var(--color-bg-strip);

@@ -32,11 +32,12 @@ test('returns entries sorted by key', () => {
 
 test('treats unreadable values as not comparable, never as equal', () => {
     const result = byKey(diff(
-        { X_both_null: null, X_one_null: null, X_only_a_null: null },
-        { X_both_null: null, X_one_null: '1' },
+        { X_both_null: null, X_one_null: null, X_only_a_null: null, X_b_null: '1' },
+        { X_both_null: null, X_one_null: '1', X_b_null: null },
     ));
     assert.equal(result.X_both_null.status, 'unknown');
     assert.equal(result.X_one_null.status, 'unknown');
+    assert.equal(result.X_b_null.status, 'unknown');
     assert.equal(result.X_only_a_null.status, 'onlyA');
 });
 
@@ -49,7 +50,7 @@ test('shows short values of harmless keys', () => {
 test('never shows values of secret-like keys', () => {
     const secretKeys = ['Ad_passwd', 'LDAP_szPasswd', 'NOTIFY_smtpconf', 'retain_admin_pwd',
         'SOME_api_token', 'SOME_secret', 'SOME_prikey', 'NOTIFY_mailfrom', 'SOME_cert',
-        'NetBKP_PairID'];
+        'NetBKP_PairID', 'X_PrivateMaterial', 'NOTIFY_filter'];
     const a = Object.fromEntries(secretKeys.map(k => [k, 'x']));
     const b = Object.fromEntries(secretKeys.map(k => [k, 'y']));
     for (const entry of diff(a, b)) {
@@ -65,6 +66,16 @@ test('never shows long values, whatever the key', () => {
     assert.equal(entry.status, 'changed');
     assert.equal(entry.a, null);
     assert.equal(entry.b, null);
+});
+
+test('shows values up to 32 characters and hides longer ones', () => {
+    const result = byKey(diff(
+        { X_shown: 'a'.repeat(32), X_hidden: 'a'.repeat(33) },
+        { X_shown: 'b'.repeat(32), X_hidden: 'b'.repeat(33) },
+    ));
+    assert.equal(result.X_shown.a, 'a'.repeat(32));
+    assert.equal(result.X_hidden.a, null);
+    assert.equal(result.X_hidden.b, null);
 });
 
 test('hides a value on one side only when only that side is unsafe', () => {
@@ -108,4 +119,21 @@ test('reports changed affected items for a check that fails in both', () => {
     assert.deepEqual(result.itemsChanged[0].itemsOnlyA, ['SSH 22']);
     assert.deepEqual(result.itemsChanged[0].itemsOnlyB, ['DSM HTTPS 5001']);
     assert.equal(plain(app.diffFindings(a, a)).itemsChanged.length, 0);
+});
+
+test('reports affected items that were only added or only removed', () => {
+    const app = loadApp();
+    const f = items => [{ id: 'x', status: 'fail', affectedItems: items }];
+    const added = plain(app.diffFindings(f(['a']), f(['a', 'b'])));
+    assert.deepEqual(added.itemsChanged[0].itemsOnlyA, []);
+    assert.deepEqual(added.itemsChanged[0].itemsOnlyB, ['b']);
+    const removed = plain(app.diffFindings(f(['a', 'b']), f(['a'])));
+    assert.deepEqual(removed.itemsChanged[0].itemsOnlyA, ['b']);
+    assert.deepEqual(removed.itemsChanged[0].itemsOnlyB, []);
+});
+
+test('translation placeholders insert values literally', () => {
+    const app = loadApp();
+    assert.equal(app.t('compareItemsOnlyA', 'R$&D'), 'only in A: R$&D');
+    assert.equal(app.t('compareFindingsSummary', '{1}', 2, 3), '{1} only in A, 2 only in B, 3 with different affected items');
 });
