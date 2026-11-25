@@ -129,3 +129,39 @@ test('an empty filter result does not claim that all checks passed', () => {
     assert.doesNotMatch(html, /No Issues Found|All security checks passed/);
     assert.match(html, /No findings match the filter/);
 });
+
+function compareFixture(configA, configB) {
+    const side = (fileName, config) => ({
+        fileName,
+        info: { unique: 'synology_x_ds220+', dsm_majorversion: '7', dsm_minorversion: '2', dsm_buildnumber: '1' },
+        config: new Map(Object.entries(config)),
+    });
+    return [side('a.dss', configA), side('b.dss', configB)];
+}
+
+test('compare view lists differences with headers and never prints hidden values', () => {
+    const app = loadViews(loadApp());
+    const [a, b] = compareFixture(
+        { FTP_isEnableFTP: '1', Ad_passwd: 'secret-a', FIREWALL_rules: 'r'.repeat(40), SNMP_isEnableSNMP: '0' },
+        { FTP_isEnableFTP: '0', Ad_passwd: 'secret-b', FIREWALL_rules: 's'.repeat(40), SNMP_isEnableSNMP: '0' },
+    );
+    const html = app.renderCompareView(a, b);
+    assert.match(html, /id="view-heading" tabindex="-1"/);
+    assert.match(html, /data-focus-key="compare-show-all"\s+aria-pressed="false"/);
+    assert.match(html, /class="compare-scroll" tabindex="0" role="region" aria-label="[^"]+"/);
+    assert.match(html, /<th scope="rowgroup" colspan="4" class="compare-group">FTP<\/th>/);
+    assert.match(html, /<th scope="row"><code>FTP_isEnableFTP<\/code><\/th>/);
+    assert.doesNotMatch(html, /secret-a|secret-b|rrrr|ssss/);
+    // Same values stay out until the toggle is pressed
+    assert.doesNotMatch(html, /SNMP_isEnableSNMP/);
+    vm.runInContext('compareState.showAll = true', app);
+    assert.match(app.renderCompareView(a, b), /SNMP_isEnableSNMP/);
+});
+
+test('compare view says so when the backups do not differ', () => {
+    const app = loadViews(loadApp());
+    const [a, b] = compareFixture({ FTP_isEnableFTP: '1' }, { FTP_isEnableFTP: '1' });
+    const html = app.renderCompareView(a, b);
+    assert.match(html, /class="compare-empty"/);
+    assert.doesNotMatch(html, /<table/);
+});

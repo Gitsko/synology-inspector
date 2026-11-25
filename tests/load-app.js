@@ -75,6 +75,7 @@ function runChecks(app, configObj, extras = {}) {
 const VIEW_SCRIPTS = [
     'js/compliance-view.js',
     'js/bestpractices-view.js',
+    'js/compare-view.js',
     'js/app.js',
 ];
 

@@ -901,12 +901,152 @@
     padding-left: 18px;
 }
 
+/* ── Backup comparison ───────────────────────────────────────────────────────── */
+.compare-view {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+    background: var(--color-bg-page);
+}
+
+.compare-header {
+    background: var(--color-bg-panel);
+    border-bottom: 1px solid var(--color-border-sub);
+    box-shadow: var(--shadow-level1);
+    padding: 20px 28px;
+    flex-shrink: 0;
+}
+
+.compare-header-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    flex-wrap: wrap;
+}
+
+.compare-sides {
+    display: flex;
+    gap: 16px 40px;
+    flex-wrap: wrap;
+    margin: 12px 0;
+}
+
+.compare-side-title {
+    font-size: .9375rem;
+    font-weight: 700;
+    color: var(--color-text-1);
+    margin-bottom: 4px;
+}
+
+.compare-side-list {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 2px 12px;
+    font-size: .875rem;
+}
+
+.compare-side-list dt { color: var(--color-text-3); }
+.compare-side-list dd { color: var(--color-text-1); overflow-wrap: anywhere; }
+
+.compare-summary {
+    font-size: .9375rem;
+    font-weight: 600;
+    color: var(--color-text-1);
+}
+
+.compare-note {
+    font-size: .875rem;
+    color: var(--color-text-3);
+    margin: 4px 0 12px;
+}
+
+.compare-toggle {
+    font: inherit;
+    font-size: .875rem;
+    color: var(--color-brand);
+    background: var(--color-bg-panel);
+    border: 1px solid var(--color-brand);
+    border-radius: var(--r-sm);
+    padding: 6px 12px;
+    min-height: 24px;
+    cursor: pointer;
+}
+
+.compare-toggle[aria-pressed="true"] {
+    color: var(--color-bg-panel);
+    background: var(--color-brand);
+}
+
+.compare-scroll {
+    flex: 1;
+    overflow: auto;
+    padding: 16px 24px;
+}
+
+.compare-table {
+    width: 100%;
+    border-collapse: collapse;
+    background: var(--color-bg-panel);
+    font-size: .875rem;
+}
+
+.compare-table th,
+.compare-table td {
+    text-align: left;
+    vertical-align: top;
+    padding: 6px 10px;
+    border-bottom: 1px solid var(--color-border-sub);
+}
+
+/* Keys are long identifiers; values are short or replaced by a note */
+.compare-table code { overflow-wrap: anywhere; }
+
+.compare-table thead th {
+    color: var(--color-text-2);
+    font-weight: 600;
+    background: var(--color-bg-strip);
+}
+
+.compare-table tbody th[scope="row"] { font-weight: 400; }
+
+.compare-group {
+    font-weight: 700;
+    color: var(--color-text-1);
+    background: var(--color-bg-strip);
+}
+
+.compare-value--note {
+    color: var(--color-text-3);
+    font-style: italic;
+}
+
+/* Status is always spelled out; the weight only adds emphasis */
+.compare-row--changed .compare-status,
+.compare-row--onlyA .compare-status,
+.compare-row--onlyB .compare-status { font-weight: 700; }
+
+.compare-empty {
+    padding: 24px 28px;
+    font-size: .9375rem;
+    color: var(--color-text-1);
+}
+
 /* ── Small viewports / high zoom (WCAG 1.4.10 Reflow) ────────────────────────── */
 @media (max-width: 60em), (max-height: 40em) {
     .results-shell,
     .compliance-view,
-    .bestpractices-view { height: auto; overflow: visible; }
-    .findings-scroll-area { overflow: visible; padding: 12px; }
+    .bestpractices-view,
+    .compare-view { height: auto; overflow: visible; }
+    .findings-scroll-area,
+    .compare-scroll { overflow: visible; padding: 12px; }
+    .compare-header { padding: 16px; }
+    /* A data table may scroll sideways in its own region (WCAG 1.4.10 exception) */
+    .compare-scroll { overflow-x: auto; }
+    .compare-table th,
+    .compare-table td { padding: 6px; }
 }
 
 /* Narrow viewports only */

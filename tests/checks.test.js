@@ -222,7 +222,8 @@ test('every translation key used by the checks and views is defined', () => {
     const app = loadApp('de');
     const dir = path.join(ROOT, 'js/checks');
     const files = [...fs.readdirSync(dir).map(f => path.join(dir, f)),
-        ...['compliance-engine.js', 'compliance-view.js', 'bestpractices-view.js', 'app.js']
+        ...['compliance-engine.js', 'compliance-view.js', 'bestpractices-view.js',
+            'compare-view.js', 'app.js']
             .map(f => path.join(ROOT, 'js', f))];
     const used = new Set();
     for (const file of files) {

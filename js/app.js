@@ -7,12 +7,15 @@
  *   'idle'    → file selected/dropped → 'loading'
  *   'loading' → parse success         → 'results'
  *   'loading' → parse error           → 'error'
+ *   'idle'    → two files selected    → 'loading' → 'compare'
  *   'results' → reset button          → 'idle'
+ *   'compare' → reset button          → 'idle'
  *   'error'   → reset button          → 'idle'
  *
  * Depends on (loaded before this file):
  *   i18n.js, xz-decompress.js, tar-parser.js, sqlite-reader.js,
- *   dss-pipeline.js, compliance-engine.js, checks/*.js, compliance-view.js
+ *   dss-pipeline.js, compliance-engine.js, compare.js, checks/*.js,
+ *   compliance-view.js, bestpractices-view.js, compare-view.js
  */
 
 const YOUTUBE_CHANNEL_URL = 'https://www.youtube.com/@navigio1';
@@ -37,8 +40,9 @@ function formatFileSize(bytes) {
 
 // ── App state ─────────────────────────────────────────────────────────────────
 
-let _appPhase     = 'idle';       // 'idle' | 'loading' | 'results' | 'error'
+let _appPhase     = 'idle';       // 'idle' | 'loading' | 'results' | 'compare' | 'error'
 let _parseResult  = null;
+let _compareResults = null;       // [parse result A, parse result B]
 let _errorMessage = '';
 let _activeTab    = 'security';   // 'security' | 'bestpractices'
 
@@ -80,6 +84,12 @@ function renderApp() {
                 }
             </div>
         `;
+    } else if (_appPhase === 'compare' && _compareResults) {
+        root.innerHTML = `
+            <div class="compare-view" id="compare-view-root">
+                ${renderCompareView(_compareResults[0], _compareResults[1])}
+            </div>
+        `;
     } else if (_appPhase === 'error') {
         root.innerHTML = renderErrorView(_errorMessage);
     }
@@ -87,20 +97,26 @@ function renderApp() {
 
 // ── Context bar ────────────────────────────────────────────────────────────────
 
+/** DSM version, model and hostname of a parse result, '—' where unknown. */
+function describeBackup({ info, config }) {
+    const version = info.dsm_majorversion
+        ? `${info.dsm_majorversion}.${info.dsm_minorversion || '0'} (Build ${info.dsm_buildnumber || '?'})`
+        : '—';
+    const model   = info.unique
+        ? info.unique.replace(/^synology_[^_]+_/, '').toUpperCase()
+        : '—';
+    let hostname = '—';
+    try { hostname = JSON.parse(config?.get('NETWORK_GENERAL_config') || '{}')?.config?.server_name || '—'; } catch (_) {}
+    return { version, model, hostname };
+}
+
 function updateContextBar() {
     const bar = document.getElementById('context-bar');
     if (!bar) return;
 
     if (_appPhase === 'results' && _parseResult) {
-        const { info, config, fileName, fileSize } = _parseResult;
-        const version = info.dsm_majorversion
-            ? `${info.dsm_majorversion}.${info.dsm_minorversion || '0'} (Build ${info.dsm_buildnumber || '?'})`
-            : '—';
-        const model   = info.unique
-            ? info.unique.replace(/^synology_[^_]+_/, '').toUpperCase()
-            : '—';
-        let hostname = '—';
-        try { hostname = JSON.parse(config?.get('NETWORK_GENERAL_config') || '{}')?.config?.server_name || '—'; } catch (_) {}
+        const { fileName, fileSize } = _parseResult;
+        const { version, model, hostname } = describeBackup(_parseResult);
 
         bar.className = 'context-bar';
         bar.setAttribute('aria-label', t('contextBarLabel'));
@@ -169,6 +185,10 @@ function renderDropZone() {
                             onclick="event.stopPropagation();openFilePicker()">${t('dropBrowse')}</button>
                 </div>
                 <div class="drop-zone-formats" id="drop-zone-formats">${t('dropFormats')}</div>
+                <div class="drop-zone-compare">${t('compareLead')}
+                    <button type="button" class="drop-zone-browse" id="compare-btn"
+                            onclick="event.stopPropagation();openComparePicker()">${t('compareBrowse')}</button>
+                </div>
                 <div class="drop-zone-privacy">
                     <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" aria-hidden="true"
                          fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -190,6 +210,8 @@ function renderDropZone() {
         </div>
         <input type="file" id="file-input" accept=".dss"
                style="display:none" onchange="onFileInputChange(event)">
+        <input type="file" id="compare-input" accept=".dss" multiple
+               style="display:none" onchange="onCompareInputChange(event)">
     `;
 }
 
@@ -237,19 +259,46 @@ function processFile(file) {
             document.getElementById('view-heading')?.focus();
             announce(t('announceLoaded', findingCountText(_complianceVisibleCount)));
         })
-        .catch(err => {
-            _errorMessage = err.message || String(err);
-            _appPhase     = 'error';
+        .catch(showError);
+}
+
+function showError(err) {
+    _errorMessage = err.message || String(err);
+    _appPhase     = 'error';
+    renderApp();
+    document.querySelector('.error-title')?.focus();
+    // The focused heading already reads the error title
+    announce(_errorMessage);
+}
+
+/** Parse two backups and show the comparison of their settings. */
+function processComparison(files) {
+    if (files.length !== 2) {
+        showError(new Error(t('errCompareCount')));
+        return;
+    }
+
+    _appPhase = 'loading';
+    renderApp();
+    announce(t('loading'));
+
+    Promise.all(files.map(parseDSSFile))
+        .then(results => {
+            _compareResults = results;
+            compareState.showAll = false;
+            _appPhase = 'compare';
             renderApp();
-            document.querySelector('.error-title')?.focus();
-            // The focused heading already reads the error title
-            announce(_errorMessage);
-        });
+            document.getElementById('view-heading')?.focus();
+            announce(t('announceCompared',
+                compareSummaryText(compareCounts(diffConfigMaps(results[0].config, results[1].config)))));
+        })
+        .catch(showError);
 }
 
 function resetApp() {
     _appPhase     = 'idle';
     _parseResult  = null;
+    _compareResults = null;
     _errorMessage = '';
     _activeTab    = 'security';
     renderApp();
@@ -264,6 +313,10 @@ function switchTab(tab) {
 
 function openFilePicker() {
     document.getElementById('file-input')?.click();
+}
+
+function openComparePicker() {
+    document.getElementById('compare-input')?.click();
 }
 
 // ── Accessibility helpers ──────────────────────────────────────────────────────
@@ -327,13 +380,19 @@ function onDrop(event) {
     event.preventDefault();
     event.stopPropagation();
     document.getElementById('drop-zone')?.classList.remove('drop-zone--active');
-    const file = event.dataTransfer?.files?.[0];
-    if (file) processFile(file);
+    const files = [...(event.dataTransfer?.files ?? [])];
+    if (files.length > 1) processComparison(files);
+    else if (files.length === 1) processFile(files[0]);
 }
 
 function onFileInputChange(event) {
     const file = event.target?.files?.[0];
     if (file) processFile(file);
+}
+
+function onCompareInputChange(event) {
+    const files = [...(event.target?.files ?? [])];
+    if (files.length) processComparison(files);
 }
 
 // ── About ──────────────────────────────────────────────────────────────────────
