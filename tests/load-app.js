@@ -15,6 +15,7 @@ const SCRIPTS = [
     'js/i18n.js',
     'js/sqlite-reader.js',
     'js/compliance-engine.js',
+    'js/compare.js',
     'js/checks/check-remote-access.js',
     'js/checks/check-network.js',
     'js/checks/check-protocols.js',
