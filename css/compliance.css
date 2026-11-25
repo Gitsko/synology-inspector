@@ -1028,8 +1028,51 @@
 .compare-row--onlyA .compare-status,
 .compare-row--onlyB .compare-status { font-weight: 700; }
 
+.compare-section + .compare-section {
+    margin-top: 28px;
+}
+
+.compare-section-title {
+    font-size: 1.0625rem;
+    font-weight: 700;
+    color: var(--color-text-1);
+    margin-bottom: 4px;
+}
+
+.compare-group-title {
+    font-size: .9375rem;
+    font-weight: 600;
+    color: var(--color-text-1);
+    margin: 12px 0 6px;
+}
+
+.compare-findings {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    background: var(--color-bg-panel);
+    border: 1px solid var(--color-border-sub);
+    border-radius: var(--r-sm);
+}
+
+.compare-finding {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 4px 8px;
+    padding: 8px 12px;
+    font-size: .875rem;
+    color: var(--color-text-1);
+}
+
+.compare-finding + .compare-finding { border-top: 1px solid var(--color-border-sub); }
+.compare-finding-kind { color: var(--color-text-3); }
+.compare-finding-items { flex-basis: 100%; color: var(--color-text-2); overflow-wrap: anywhere; }
+
+.compare-section .compare-toggle { margin-bottom: 12px; }
+
 .compare-empty {
-    padding: 24px 28px;
+    padding: 8px 0;
     font-size: .9375rem;
     color: var(--color-text-1);
 }

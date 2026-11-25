@@ -290,6 +290,7 @@ function processComparison(files) {
             renderApp();
             document.getElementById('view-heading')?.focus();
             announce(t('announceCompared',
+                compareFindingsSummaryText(compareFindings(results[0], results[1])),
                 compareSummaryText(compareCounts(diffConfigMaps(results[0].config, results[1].config)))));
         })
         .catch(showError);

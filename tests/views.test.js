@@ -162,6 +162,26 @@ test('compare view says so when the backups do not differ', () => {
     const app = loadViews(loadApp());
     const [a, b] = compareFixture({ FTP_isEnableFTP: '1' }, { FTP_isEnableFTP: '1' });
     const html = app.renderCompareView(a, b);
-    assert.match(html, /class="compare-empty"/);
+    assert.match(html, /Both backups have the same open check results\./);
+    assert.match(html, /No differences in the system settings\./);
     assert.doesNotMatch(html, /<table/);
+});
+
+test('compare view lists check results that occur in one backup only', () => {
+    const app = loadViews(loadApp());
+    const [a, b] = compareFixture({ CIFS_Min_Protocol: 'SMB1' }, { CIFS_Min_Protocol: 'SMB2' });
+    const html = app.renderCompareView(a, b);
+    assert.match(html, /<h3 class="compare-section-title" id="compare-findings-title">Check results<\/h3>/);
+    assert.match(html, /<h4 class="compare-group-title">Only in backup A<\/h4>\s*<ul class="compare-findings" role="list">/);
+    assert.doesNotMatch(html, /Only in backup B/);
+});
+
+test('compare view shows check results even when the settings are equal', () => {
+    const app = loadViews(loadApp());
+    const [a, b] = compareFixture({ CIFS_Min_Protocol: 'SMB2' }, { CIFS_Min_Protocol: 'SMB2' });
+    a.schedulerTasks = [{ app: 'SYNO.SDS.TaskScheduler.Recycle', state: 'enabled' }];
+    b.schedulerTasks = [{ app: 'SYNO.SDS.Other', state: 'enabled' }];
+    const html = app.renderCompareView(a, b);
+    assert.match(html, /No differences in the system settings\./);
+    assert.match(html, /Only in backup B/);
 });

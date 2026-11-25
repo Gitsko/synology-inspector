@@ -72,3 +72,40 @@ test('hides a value on one side only when only that side is unsafe', () => {
     assert.equal(entry.a, 'nginx');
     assert.equal(entry.b, null);
 });
+
+function diffChecks(configA, configB) {
+    const app = loadApp();
+    const { runChecks } = require('./load-app.js');
+    return plain(app.diffFindings(runChecks(app, configA), runChecks(app, configB)));
+}
+
+const ids = list => list.map(f => (f.a ?? f).id);
+
+test('lists failed checks that occur in one backup only', () => {
+    const result = diffChecks({ CIFS_Min_Protocol: 'SMB1' }, { CIFS_Min_Protocol: 'SMB2' });
+    assert.ok(ids(result.onlyA).includes('syn-smb1-enabled'));
+    assert.ok(!ids(result.onlyB).includes('syn-smb1-enabled'));
+    // Passed checks never count as a difference
+    assert.ok(!ids(result.onlyB).some(id => id.startsWith('syn-smb1')));
+});
+
+test('shows a check that could not be evaluated instead of hiding it', () => {
+    const result = diffChecks({ CIFS_Min_Protocol: 'SMB1' }, {});
+    assert.ok(ids(result.onlyA).includes('syn-smb1-enabled'));
+    const unknown = result.onlyB.find(f => f.id === 'syn-smb1-unknown');
+    assert.ok(unknown, 'the unknown finding must appear on side B');
+    assert.equal(unknown.status, 'unknown');
+});
+
+test('reports changed affected items for a check that fails in both', () => {
+    const app = loadApp();
+    const a = [{ id: 'x', status: 'fail', affectedItems: ['SSH 22', 'DSM HTTP 5000'] }];
+    const b = [{ id: 'x', status: 'fail', affectedItems: ['DSM HTTP 5000', 'DSM HTTPS 5001'] }];
+    const result = plain(app.diffFindings(a, b));
+    assert.deepEqual(result.onlyA, []);
+    assert.deepEqual(result.onlyB, []);
+    assert.equal(result.itemsChanged.length, 1);
+    assert.deepEqual(result.itemsChanged[0].itemsOnlyA, ['SSH 22']);
+    assert.deepEqual(result.itemsChanged[0].itemsOnlyB, ['DSM HTTPS 5001']);
+    assert.equal(plain(app.diffFindings(a, a)).itemsChanged.length, 0);
+});

@@ -46,3 +46,33 @@ function diffConfigMaps(configA, configB) {
         };
     });
 }
+
+/**
+ * Compares the open points (failed or not evaluated checks) of two backups.
+ * Passed checks are left out: a fixed problem shows up as a failed finding
+ * on one side only, and pass findings carry their own ids.
+ *
+ * @param {Object[]} findingsA
+ * @param {Object[]} findingsB
+ * @returns {{onlyA: Object[], onlyB: Object[],
+ *            itemsChanged: {a: Object, b: Object, itemsOnlyA: string[], itemsOnlyB: string[]}[]}}
+ */
+function diffFindings(findingsA, findingsB) {
+    const open = findings => new Map(findings.filter(f => f.status !== 'pass').map(f => [f.id, f]));
+    const openA = open(findingsA);
+    const openB = open(findingsB);
+
+    const onlyA = [...openA.values()].filter(f => !openB.has(f.id));
+    const onlyB = [...openB.values()].filter(f => !openA.has(f.id));
+    const itemsChanged = [];
+    for (const [id, a] of openA) {
+        const b = openB.get(id);
+        if (!b) continue;
+        const itemsA = a.affectedItems ?? [];
+        const itemsB = b.affectedItems ?? [];
+        const itemsOnlyA = itemsA.filter(item => !itemsB.includes(item));
+        const itemsOnlyB = itemsB.filter(item => !itemsA.includes(item));
+        if (itemsOnlyA.length || itemsOnlyB.length) itemsChanged.push({ a, b, itemsOnlyA, itemsOnlyB });
+    }
+    return { onlyA, onlyB, itemsChanged };
+}

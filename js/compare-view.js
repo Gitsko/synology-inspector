@@ -1,9 +1,11 @@
 /**
  * compare-view.js
  *
- * Renders the comparison of the system settings of two backups.
+ * Renders the comparison of two backups: their check results and their
+ * system settings.
  *
- * Depends on: compare.js (diffConfigMaps), i18n.js,
+ * Depends on: compare.js (diffConfigMaps, diffFindings), compliance-engine.js
+ *             (runAllChecks, runAllBestPracticesChecks), i18n.js,
  *             app.js (escapeHtml, describeBackup, rerenderKeepingFocus, announce)
  */
 
@@ -34,6 +36,61 @@ function compareCounts(entries) {
 
 function compareSummaryText(counts) {
     return t('compareSummary', counts.changed, counts.onlyA, counts.onlyB, counts.unknown);
+}
+
+/** Security and best-practice findings of one backup, each tagged with its kind. */
+function compareRunChecks(result) {
+    const tag = kind => f => ({ ...f, kind });
+    return [
+        ...runAllChecks(result.config, result.tlsProfile, result).map(tag('security')),
+        ...runAllBestPracticesChecks(result.config, result.tlsProfile, result).map(tag('bestpractices')),
+    ];
+}
+
+/** Checks run at render time so titles follow the current language. */
+function compareFindings(resultA, resultB) {
+    return diffFindings(compareRunChecks(resultA), compareRunChecks(resultB));
+}
+
+function compareFindingsSummaryText(diff) {
+    return t('compareFindingsSummary', diff.onlyA.length, diff.onlyB.length, diff.itemsChanged.length);
+}
+
+function renderCompareFinding(f, extra = '') {
+    const pill = f.status === 'unknown'
+        ? `<span class="severity-pill severity-pill--unknown">${t('severityUnknown')}</span>`
+        : `<span class="severity-pill severity-pill--${f.severity}">${t('severity' + f.severity.charAt(0).toUpperCase() + f.severity.slice(1))}</span>`;
+    const kind = t(f.kind === 'security' ? 'tabSecurity' : 'tabBestPractices');
+    return `
+        <li class="compare-finding">
+            ${pill}
+            <span class="compare-finding-title">${escapeHtml(f.title)}</span>
+            <span class="compare-finding-kind">(${kind})</span>
+            ${extra}
+        </li>`;
+}
+
+function renderCompareItems(change) {
+    const parts = [];
+    if (change.itemsOnlyA.length) parts.push(t('compareItemsOnlyA', change.itemsOnlyA.map(escapeHtml).join(', ')));
+    if (change.itemsOnlyB.length) parts.push(t('compareItemsOnlyB', change.itemsOnlyB.map(escapeHtml).join(', ')));
+    return `<span class="compare-finding-items">${parts.join('; ')}</span>`;
+}
+
+function renderCompareFindings(diff) {
+    const group = (titleKey, html) => html ? `
+        <h4 class="compare-group-title">${t(titleKey)}</h4>
+        <ul class="compare-findings" role="list">${html}</ul>` : '';
+    const body = group('compareFindingsOnlyA', diff.onlyA.map(f => renderCompareFinding(f)).join(''))
+        + group('compareFindingsOnlyB', diff.onlyB.map(f => renderCompareFinding(f)).join(''))
+        + group('compareFindingsItemsChanged',
+            diff.itemsChanged.map(c => renderCompareFinding(c.b, renderCompareItems(c))).join(''));
+    return `
+        <section class="compare-section" aria-labelledby="compare-findings-title">
+            <h3 class="compare-section-title" id="compare-findings-title">${t('compareFindingsTitle')}</h3>
+            <p class="compare-note">${t('compareFindingsNote')}</p>
+            ${body || `<p class="compare-empty">${t('compareFindingsNone')}</p>`}
+        </section>`;
 }
 
 /** Text for one side of a row; the diff only carries values that are safe to show. */
@@ -87,13 +144,13 @@ function renderCompareRows(entries, configA, configB) {
  * @returns {string} HTML
  */
 function renderCompareView(resultA, resultB) {
-    const entries = diffConfigMaps(resultA.config, resultB.config);
-    const counts  = compareCounts(entries);
-    const visible = compareState.showAll ? entries : entries.filter(e => e.status !== 'same');
+    const entries  = diffConfigMaps(resultA.config, resultB.config);
+    const counts   = compareCounts(entries);
+    const visible  = compareState.showAll ? entries : entries.filter(e => e.status !== 'same');
+    const findings = compareFindings(resultA, resultB);
 
     const table = visible.length
         ? `
-            <div class="compare-scroll" tabindex="0" role="region" aria-label="${t('compareTableLabel')}">
                 <table class="compare-table">
                     <thead>
                         <tr>
@@ -104,8 +161,7 @@ function renderCompareView(resultA, resultB) {
                         </tr>
                     </thead>
                     ${renderCompareRows(visible, resultA.config, resultB.config)}
-                </table>
-            </div>`
+                </table>`
         : `<p class="compare-empty">${t('compareNoDifferences')}</p>`;
 
     return `
@@ -120,13 +176,20 @@ function renderCompareView(resultA, resultB) {
                 ${renderCompareSide(t('compareSideA'), resultA)}
                 ${renderCompareSide(t('compareSideB'), resultB)}
             </div>
-            <p class="compare-summary">${compareSummaryText(counts)}</p>
-            <p class="compare-note">${t('compareScope')} ${t('compareHiddenNote')}</p>
-            <button type="button" class="compare-toggle" data-focus-key="compare-show-all"
-                    aria-pressed="${compareState.showAll}" onclick="toggleCompareShowAll()">
-                ${t('compareShowAll')}
-            </button>
+            <p class="compare-summary">${t('compareFindingsTitle')}: ${compareFindingsSummaryText(findings)}</p>
+            <p class="compare-summary">${t('compareSettingsTitle')}: ${compareSummaryText(counts)}</p>
         </div>
-        ${table}
+        <div class="compare-scroll" tabindex="0" role="region" aria-label="${t('compareTitle')}">
+            ${renderCompareFindings(findings)}
+            <section class="compare-section" aria-labelledby="compare-settings-title">
+                <h3 class="compare-section-title" id="compare-settings-title">${t('compareSettingsTitle')}</h3>
+                <p class="compare-note">${t('compareScope')} ${t('compareHiddenNote')}</p>
+                <button type="button" class="compare-toggle" data-focus-key="compare-show-all"
+                        aria-pressed="${compareState.showAll}" onclick="toggleCompareShowAll()">
+                    ${t('compareShowAll')}
+                </button>
+                ${table}
+            </section>
+        </div>
     `;
 }
